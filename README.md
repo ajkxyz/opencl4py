@@ -5,7 +5,7 @@ Python cffi OpenCL bindings and helper classes.
 
 Tested with Python 2.7, Python 3.3 and PyPy on Linux and Windows.
 
-To install the module run
+To install the module run:
 ```bash
 python setup.py install
 ```
