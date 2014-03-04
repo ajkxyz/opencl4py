@@ -51,7 +51,7 @@ if __name__ == "__main__":
         __kernel void test(__global const float *a, __global const float *b,
                            __global float *c, const float k) {
           size_t i = get_global_id(0);
-          c[i] += (a[i] + b[i]) * k;
+          c[i] = (a[i] + b[i]) * k;
         }
         """)
     krn = prg.get_kernel("test")

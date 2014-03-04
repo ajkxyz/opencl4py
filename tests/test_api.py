@@ -152,7 +152,7 @@ class Test(unittest.TestCase):
         queue.execute_kernel(krn, global_size, local_size, need_event=False)
 
         # Get results back from the device by map_buffer
-        ev, ptr = queue.map_buffer(a_, a.nbytes, cl.CL_MAP_READ)
+        ev, ptr = queue.map_buffer(a_, cl.CL_MAP_READ, a.nbytes)
         del ev
         ev = queue.unmap_buffer(a_, ptr)
         ev.wait()
@@ -166,10 +166,10 @@ class Test(unittest.TestCase):
                         "Incorrect result after read_buffer")
 
         # Refill buffer with stored copy by map_buffer with event
-        ev, ptr = queue.map_buffer(a_, a.nbytes, cl.CL_MAP_WRITE
-                                   if queue.device.version < 1.1999
-                                   else cl.CL_MAP_WRITE_INVALIDATE_REGION,
-                                   blocking=False, need_event=True)
+        ev, ptr = queue.map_buffer(
+            a_, cl.CL_MAP_WRITE if queue.device.version < 1.1999
+            else cl.CL_MAP_WRITE_INVALIDATE_REGION, a.nbytes,
+            blocking=False, need_event=True)
         ev.wait()
         a[:] = a_copy[:]
         ev = queue.unmap_buffer(a_, ptr)
@@ -177,7 +177,7 @@ class Test(unittest.TestCase):
         # Execute kernel
         ev = queue.execute_kernel(krn, global_size, local_size, wait_for=(ev,))
         # Get results back from the device by map_buffer
-        ev, ptr = queue.map_buffer(a_, a.nbytes, cl.CL_MAP_READ,
+        ev, ptr = queue.map_buffer(a_, cl.CL_MAP_READ, a.nbytes,
                                    wait_for=(ev,), need_event=True)
         ev.wait()
         ev = queue.unmap_buffer(a_, ptr)
@@ -191,7 +191,7 @@ class Test(unittest.TestCase):
         # Execute kernel
         ev = queue.execute_kernel(krn, global_size, local_size, wait_for=(ev,))
         # Get results back from the device by map_buffer
-        ev, ptr = queue.map_buffer(a_, a.nbytes, cl.CL_MAP_READ,
+        ev, ptr = queue.map_buffer(a_, cl.CL_MAP_READ, a.nbytes,
                                    wait_for=(ev,), need_event=True)
         ev.wait()
         ev = queue.unmap_buffer(a_, ptr)
@@ -253,7 +253,7 @@ class Test(unittest.TestCase):
         queue.execute_kernel(krn, global_size, local_size, need_event=False)
 
         # Get results back from the device by map_buffer
-        ev, ptr = queue.map_buffer(a_, sz, cl.CL_MAP_READ)
+        ev, ptr = queue.map_buffer(a_, cl.CL_MAP_READ, sz)
         del ev
         ev = queue.unmap_buffer(a_, ptr)
         ev.wait()
@@ -271,10 +271,10 @@ class Test(unittest.TestCase):
         self.assertLess(mx, 0.0001, "Incorrect result after read_buffer")
 
         # Refill buffer with stored copy by map_buffer with event
-        ev, ptr = queue.map_buffer(a_, sz, cl.CL_MAP_WRITE
-                                   if queue.device.version < 1.1999
-                                   else cl.CL_MAP_WRITE_INVALIDATE_REGION,
-                                   blocking=False, need_event=True)
+        ev, ptr = queue.map_buffer(
+            a_, cl.CL_MAP_WRITE if queue.device.version < 1.1999
+            else cl.CL_MAP_WRITE_INVALIDATE_REGION, sz,
+            blocking=False, need_event=True)
         ev.wait()
         a[0:N] = a_copy[0:N]
         ev = queue.unmap_buffer(a_, ptr)
@@ -282,7 +282,7 @@ class Test(unittest.TestCase):
         # Execute kernel
         ev = queue.execute_kernel(krn, global_size, local_size, wait_for=(ev,))
         # Get results back from the device by map_buffer
-        ev, ptr = queue.map_buffer(a_, sz, cl.CL_MAP_READ,
+        ev, ptr = queue.map_buffer(a_, cl.CL_MAP_READ, sz,
                                    wait_for=(ev,), need_event=True)
         ev.wait()
         ev = queue.unmap_buffer(a_, ptr)
@@ -299,7 +299,7 @@ class Test(unittest.TestCase):
         # Execute kernel
         ev = queue.execute_kernel(krn, global_size, local_size, wait_for=(ev,))
         # Get results back from the device by map_buffer
-        ev, ptr = queue.map_buffer(a_, sz, cl.CL_MAP_READ,
+        ev, ptr = queue.map_buffer(a_, cl.CL_MAP_READ, sz,
                                    wait_for=(ev,), need_event=True)
         ev.wait()
         ev = queue.unmap_buffer(a_, ptr)
