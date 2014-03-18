@@ -88,6 +88,18 @@ class Event(CL):
 
     Attributes:
         event_: cffi OpenCL event handle.
+        profiling_values:
+            dictionary of profiling values
+            if get_profiling_info was ever called;
+            keys: CL_PROFILING_COMMAND_QUEUED,
+                  CL_PROFILING_COMMAND_SUBMIT,
+                  CL_PROFILING_COMMAND_START,
+                  CL_PROFILING_COMMAND_END;
+            values: the current device time counter in seconds (float),
+                    or 0 if there was an error, in such case, corresponding
+                    profile_errors will be set with the error code.
+        profiling_errors: dictionary of profiling errors
+                          if get_profiling_info was ever called.
     """
     def __init__(self, event_):
         super(Event, self).__init__()
@@ -107,6 +119,43 @@ class Event(CL):
         """Waits on this event.
         """
         Event.wait_multi((self,), self.lib_)
+
+    def get_profiling_info(self, raise_exception=True):
+        """Get profiling info of the event.
+
+        Queue should be created with CL_QUEUE_PROFILING_ENABLE flag,
+        and event should be in complete state (wait completed).
+
+        Parameters:
+            raise_exception: raise exception on error or not,
+                             self.profiling_values, self.profiling_errors
+                             will be available anyway.
+
+        Returns:
+            tuple of (profiling_values, profiling_errors).
+        """
+        vle = cl.ffi.new("cl_ulong[]", 1)
+        sz = cl.ffi.sizeof(vle)
+        vles = {}
+        errs = {}
+        for name in (cl.CL_PROFILING_COMMAND_QUEUED,
+                     cl.CL_PROFILING_COMMAND_SUBMIT,
+                     cl.CL_PROFILING_COMMAND_START,
+                     cl.CL_PROFILING_COMMAND_END):
+            vle[0] = 0
+            n = self.lib_.clGetEventProfilingInfo(
+                self.event_, name, sz, vle, cl.NULL)
+            vles[name] = 1.0e-9 * vle[0] if not n else 0.0
+            errs[name] = n
+        self.profiling_values = vles
+        self.profiling_errors = errs
+        if raise_exception:
+            for err in errs.values():
+                if not err:
+                    continue
+                raise CLRuntimeError("clGetEventProfilingInfo() failed with "
+                                     "error %d" % (err), err)
+        return (vles, errs)
 
     def release(self):
         if self.event_ is not None:

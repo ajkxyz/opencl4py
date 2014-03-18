@@ -55,6 +55,7 @@ CL_DEVICE_VENDOR_ID = 0x1001
 CL_DEVICE_GLOBAL_MEM_SIZE = 0x101F
 CL_DEVICE_MEM_BASE_ADDR_ALIGN = 0x1019
 CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE = 1
+CL_QUEUE_PROFILING_ENABLE = 2
 CL_PROGRAM_BUILD_LOG = 0x1183
 CL_MAP_READ = 1
 CL_MAP_WRITE = 2
@@ -65,6 +66,10 @@ CL_MEM_READ_ONLY = 4
 CL_MEM_USE_HOST_PTR = 8
 CL_MEM_ALLOC_HOST_PTR = 16
 CL_MEM_COPY_HOST_PTR = 32
+CL_PROFILING_COMMAND_QUEUED = 0x1280
+CL_PROFILING_COMMAND_SUBMIT = 0x1281
+CL_PROFILING_COMMAND_START = 0x1282
+CL_PROFILING_COMMAND_END = 0x1283
 
 
 # Create parser
@@ -97,6 +102,7 @@ def initialize():
     typedef uint64_t cl_mem_flags;
     typedef uint32_t cl_bool;
     typedef uint64_t cl_map_flags;
+    typedef uint32_t cl_profiling_info;
 
     typedef void* cl_platform_id;
     typedef void* cl_device_id;
@@ -235,6 +241,12 @@ def initialize():
                                   cl_uint num_events_in_wait_list,
                                   const cl_event *event_wait_list,
                                   cl_event *event);
+
+    cl_int clGetEventProfilingInfo(cl_event event,
+                                   cl_profiling_info param_name,
+                                   size_t param_value_size,
+                                   void *param_value,
+                                   size_t *param_value_size_ret);
     """
 
     # Parse

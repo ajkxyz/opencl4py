@@ -312,6 +312,48 @@ class Test(unittest.TestCase):
         del _b
         del _a
 
+    def test_event_profiling(self):
+        import numpy
+        # Create platform, context, program, kernel and queue
+        platforms = cl.Platforms()
+        ctx = platforms.create_some_context()
+        prg = ctx.create_program(self.src_test)
+        krn = prg.get_kernel("test")
+        queue = ctx.create_queue(ctx.devices[0], cl.CL_QUEUE_PROFILING_ENABLE)
+
+        # Create arrays with some values for testing
+        a = numpy.arange(100000, dtype=numpy.float32)
+        b = numpy.cos(a)
+        a = numpy.sin(a)
+        c = numpy.array([1.2345], dtype=numpy.float32)
+
+        # Create buffers
+        a_ = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,
+                               a)
+        b_ = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,
+                               b)
+
+        # Set kernel arguments
+        krn.set_arg(0, a_)
+        krn.set_arg(1, b_)
+        krn.set_arg(2, c[0:1])
+
+        # Execute kernel
+        ev = queue.execute_kernel(krn, [a.size], None)
+        ev.wait()
+
+        try:
+            vles, errs = ev.get_profiling_info()
+            self.assertEqual(vles, ev.profiling_values)
+            self.assertEqual(errs, ev.profiling_errors)
+        except cl.CLRuntimeError:
+            pass
+        for name, vle in ev.profiling_values.items():
+            err = ev.profiling_errors[name]
+            self.assertTrue((vle and not err) or (not vle and err))
+            self.assertEqual(type(vle), float)
+            self.assertEqual(type(err), int)
+
 
 if __name__ == "__main__":
     unittest.main()

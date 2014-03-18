@@ -5,6 +5,39 @@ Python cffi OpenCL bindings and helper classes.
 
 Tested with Python 2.7, Python 3.3 and PyPy on Linux and Windows.
 
+Covered functions:
+```
+clBuildProgram
+clCreateBuffer
+clCreateCommandQueue
+clCreateContext
+clCreateKernel
+clCreateKernel
+clCreateProgramWithSource
+clEnqueueMapBuffer
+clEnqueueNDRangeKernel
+clEnqueueReadBuffer
+clEnqueueUnmapMemObject
+clEnqueueWriteBuffer
+clFinish
+clFlush
+clGetDeviceIDs
+clGetDeviceInfo
+clGetEventProfilingInfo
+clGetPlatformIDs
+clGetPlatformInfo
+clGetProgramBuildInfo
+clReleaseCommandQueue
+clReleaseContext
+clReleaseEvent
+clReleaseKernel
+clReleaseKernel
+clReleaseMemObject
+clReleaseProgram
+clSetKernelArg
+clWaitForEvents
+```
+
 To install the module run:
 ```bash
 python setup.py install
@@ -29,7 +62,8 @@ for PyPy:
 PYTHONPATH=src pypy tests/test_api.py
 ```
 
-Currently, PyPy numpy support may be incomplete, so tests which use numpy arrays may fail.
+Currently, PyPy numpy support may be incomplete,
+so tests which use numpy arrays may fail.
 
 Example usage:
 

@@ -49,6 +49,7 @@ from opencl4py._cffi import (CL_DEVICE_TYPE_CPU,
                              CL_DEVICE_TYPE_ACCELERATOR,
                              CL_DEVICE_TYPE_CUSTOM,
                              CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE,
+                             CL_QUEUE_PROFILING_ENABLE,
                              CL_MAP_READ,
                              CL_MAP_WRITE,
                              CL_MAP_WRITE_INVALIDATE_REGION,
@@ -57,7 +58,11 @@ from opencl4py._cffi import (CL_DEVICE_TYPE_CPU,
                              CL_MEM_READ_ONLY,
                              CL_MEM_USE_HOST_PTR,
                              CL_MEM_ALLOC_HOST_PTR,
-                             CL_MEM_COPY_HOST_PTR)
+                             CL_MEM_COPY_HOST_PTR,
+                             CL_PROFILING_COMMAND_QUEUED,
+                             CL_PROFILING_COMMAND_SUBMIT,
+                             CL_PROFILING_COMMAND_START,
+                             CL_PROFILING_COMMAND_END)
 
 
 def realign_array(a, align, np):
