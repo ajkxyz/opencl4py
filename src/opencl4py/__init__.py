@@ -41,7 +41,7 @@ Init module.
 from opencl4py._py import Platforms, Context, CLRuntimeError
 
 # Low-level interface.
-from opencl4py._cffi import ffi, lib
+from opencl4py._cffi import ffi, lib, initialize
 
 # Constants.
 from opencl4py._cffi import (CL_DEVICE_TYPE_CPU,
