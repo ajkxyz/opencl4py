@@ -84,7 +84,7 @@ lib = None
 NULL = ffi.NULL
 
 
-def initialize():
+def initialize(backends=("libOpenCL.so", "OpenCL.dll")):
     global lib
     if lib is not None:
         return
@@ -254,7 +254,7 @@ def initialize():
     ffi.cdef(src)
 
     # Load library
-    for libnme in ("libOpenCL.so", "OpenCL.dll"):
+    for libnme in backends:
         try:
             lib = ffi.dlopen(libnme)
             break
