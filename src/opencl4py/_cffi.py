@@ -37,6 +37,7 @@ Original author: Alexey Kazantsev <a.kazantsev@samsung.com>
 OpenCL cffi bindings.
 """
 import cffi
+import threading
 
 
 # Constants
@@ -72,21 +73,30 @@ CL_PROFILING_COMMAND_START = 0x1282
 CL_PROFILING_COMMAND_END = 0x1283
 
 
-# Create parser
+#: ffi parser
 ffi = cffi.FFI()
 
 
-# Loaded shared library
+#: Loaded shared library
 lib = None
 
 
-# For convenience
+#: cffi NULL pointer
 NULL = ffi.NULL
+
+
+#: Lock
+lock = threading.Lock()
 
 
 def initialize(backends=("libOpenCL.so", "OpenCL.dll")):
     global lib
     if lib is not None:
+        return
+    global lock
+    lock.acquire()
+    if lib is not None:
+        lock.release()
         return
     # C function definitions
     src = """
@@ -261,4 +271,6 @@ def initialize(backends=("libOpenCL.so", "OpenCL.dll")):
         except OSError:
             pass
     else:
+        lock.release()
         raise OSError("Could not load OpenCL library")
+    lock.release()
