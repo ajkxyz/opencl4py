@@ -47,9 +47,20 @@ class CLRuntimeError(RuntimeError):
 
 class CL(object):
     """Base OpenCL class.
+
+    Attributes:
+        _lib: handle to cffi.FFI object.
+        _handle: cffi handle to OpenCL object.
     """
     def __init__(self):
         self._lib = cl.lib  # to hold the reference
+        self._handle = None
+
+    @property
+    def handle(self):
+        """Returns cffi handle to OpenCL object.
+        """
+        return self._handle
 
     @staticmethod
     def extract_ptr_and_size(host_array, size):
@@ -87,7 +98,6 @@ class Event(CL):
     """Holds OpenCL event.
 
     Attributes:
-        handle: cffi OpenCL event handle.
         profiling_values:
             dictionary of profiling values
             if get_profiling_info was ever called;
@@ -101,16 +111,9 @@ class Event(CL):
         profiling_errors: dictionary of profiling errors
                           if get_profiling_info was ever called.
     """
-    def __init__(self, event):
+    def __init__(self, handle):
         super(Event, self).__init__()
-        self._handle = event
-
-    @property
-    def handle(self):
-        """
-        cffi OpenCL event handle.
-        """
-        return self._handle
+        self._handle = handle
 
     @staticmethod
     def wait_multi(wait_for, lib=cl.lib):
@@ -177,13 +180,11 @@ class Queue(CL):
     """Holds OpenCL command queue.
 
     Attributes:
-        handle: cffi OpenCL queue handle.
         context: context associated with this queue.
         device: device associated with this queue.
     """
     def __init__(self, context, device, flags):
         super(Queue, self).__init__()
-        self._handle = None
         self._context = context
         self._device = device
         err = cl.ffi.new("cl_int[]", 1)
@@ -193,13 +194,6 @@ class Queue(CL):
             self._handle = None
             raise CLRuntimeError("clCreateCommandQueue() failed with "
                                  "error %d" % (err[0]), err[0])
-
-    @property
-    def handle(self):
-        """
-        cffi OpenCL queue handle.
-        """
-        return self._handle
 
     @property
     def context(self):
@@ -394,7 +388,6 @@ class Buffer(CL):
     """Holds OpenCL buffer.
 
     Attributes:
-        handle: cffi OpenCL buffer handle.
         context: Context object associated with this buffer.
         flags: flags supplied for the creation of this buffer.
         host_array: host array reference, such as numpy array,
@@ -403,7 +396,6 @@ class Buffer(CL):
     """
     def __init__(self, context, flags, host_array, size=None):
         super(Buffer, self).__init__()
-        self._handle = None
         self._context = context
         self._flags = flags
         self._host_array = (host_array if flags & cl.CL_MEM_USE_HOST_PTR != 0
@@ -416,13 +408,6 @@ class Buffer(CL):
             self._handle = None
             raise CLRuntimeError("clCreateBuffer() failed with "
                                  "error %d" % (err[0]), err[0])
-
-    @property
-    def handle(self):
-        """
-        cffi OpenCL buffer handle.
-        """
-        return self._handle
 
     @property
     def context(self):
@@ -466,13 +451,11 @@ class Kernel(CL):
     """Holds OpenCL kernel.
 
     Attributes:
-        handle: cffi OpenCL kernel handle.
         program: Program object associated with this kernel.
         name: kernel name in the program.
     """
     def __init__(self, program, name):
         super(Kernel, self).__init__()
-        self._handle = None
         self._program = program
         self._name = name
         err = cl.ffi.new("cl_int[]", 1)
@@ -482,13 +465,6 @@ class Kernel(CL):
             self._handle = None
             raise CLRuntimeError("clCreateKernel() failed with "
                                  "error %d" % (err[0]), err[0])
-
-    @property
-    def handle(self):
-        """
-        cffi OpenCL kernel handle.
-        """
-        return self._handle
 
     @property
     def program(self):
@@ -555,7 +531,6 @@ class Program(CL):
     """Holds OpenCL program.
 
     Attributes:
-        handle: cffi OpenCL program handle.
         context: Context object associated with this program.
         devices: list of Device objects associated with this program.
         build_logs: list of program build logs (same length as devices list).
@@ -565,7 +540,6 @@ class Program(CL):
     """
     def __init__(self, context, devices, src, include_dirs=(), options=""):
         super(Program, self).__init__()
-        self._handle = None
         self._context = context
         self._devices = devices
         self._src = src
@@ -588,13 +562,6 @@ class Program(CL):
             options += " -I " + (dirnme if dirnme.find(" ") < 0
                                  else "\'%s\'" % (dirnme))
         self._build_program(devices, options.strip().encode("utf-8"))
-
-    @property
-    def handle(self):
-        """
-        cffi OpenCL program handle.
-        """
-        return self._handle
 
     @property
     def context(self):
@@ -680,13 +647,11 @@ class Context(CL):
     """Holds OpenCL context.
 
     Attributes:
-        handle: cffi OpenCL context handle.
         platform: Platform object associated with this context.
         devices: list of Device object associated with this context.
     """
     def __init__(self, platform, devices):
         super(Context, self).__init__()
-        self._handle = None
         self._platform = platform
         self._devices = devices
         props = cl.ffi.new("cl_context_properties[]", 3)
@@ -704,13 +669,6 @@ class Context(CL):
             self._handle = None
             raise CLRuntimeError("clCreateContext() failed with "
                                  "error %d" % (err[0]), err[0])
-
-    @property
-    def handle(self):
-        """
-        cffi OpenCL context handle.
-        """
-        return self._handle
 
     @property
     def platform(self):
@@ -780,7 +738,6 @@ class Device(CL):
     """OpenCL device.
 
     Attributes:
-        handle: cffi OpenCL device handle.
         platform: Platform object associated with this device.
         type: OpenCL type of the device (integer).
         name: OpenCL name of the device.
@@ -792,25 +749,25 @@ class Device(CL):
         memsize: global memory size of the device.
         memalign: align in bytes, required for clMapBuffer.
     """
-    def __init__(self, device_, platform, path):
+    def __init__(self, handle, platform, path):
         super(Device, self).__init__()
-        self._handle = device_
+        self._handle = handle
         self._platform = platform
         self._path = path
 
         sz = cl.ffi.new("size_t[]", 1)
         tpe = cl.ffi.new("cl_device_type[]", 1)
-        n = self._lib.clGetDeviceInfo(device_, cl.CL_DEVICE_TYPE,
+        n = self._lib.clGetDeviceInfo(handle, cl.CL_DEVICE_TYPE,
                                       8, tpe, sz)
         self._type = tpe[0] if not n else None
 
         nme = cl.ffi.new("char[]", 256)
-        n = self._lib.clGetDeviceInfo(device_, cl.CL_DEVICE_NAME,
+        n = self._lib.clGetDeviceInfo(handle, cl.CL_DEVICE_NAME,
                                       256, nme, sz)
         self._name = ((b"".join(nme[0:sz[0] - 1])).decode("utf-8")
                       if not n else None)
 
-        n = self._lib.clGetDeviceInfo(device_, cl.CL_DEVICE_OPENCL_C_VERSION,
+        n = self._lib.clGetDeviceInfo(handle, cl.CL_DEVICE_OPENCL_C_VERSION,
                                       256, nme, sz)
         s = (b"".join(nme[0:sz[0] - 1])).decode("utf-8") if not n else None
         self._version_string = s
@@ -821,32 +778,25 @@ class Device(CL):
         except ValueError:
             self._version = 0.0
 
-        n = self._lib.clGetDeviceInfo(device_, cl.CL_DEVICE_VENDOR,
+        n = self._lib.clGetDeviceInfo(handle, cl.CL_DEVICE_VENDOR,
                                       256, nme, sz)
         self._vendor = ((b"".join(nme[0:sz[0] - 1])).decode("utf-8")
                         if not n else None)
 
         vendor_id = cl.ffi.new("cl_uint[]", 1)
-        n = self._lib.clGetDeviceInfo(device_, cl.CL_DEVICE_VENDOR_ID,
+        n = self._lib.clGetDeviceInfo(handle, cl.CL_DEVICE_VENDOR_ID,
                                       4, vendor_id, sz)
         self._vendor_id = vendor_id[0] if not n else None
 
         memsize = cl.ffi.new("cl_ulong[]", 1)
-        n = self._lib.clGetDeviceInfo(device_, cl.CL_DEVICE_GLOBAL_MEM_SIZE,
+        n = self._lib.clGetDeviceInfo(handle, cl.CL_DEVICE_GLOBAL_MEM_SIZE,
                                       8, memsize, sz)
         self._memsize = memsize[0] if not n else None
 
         memalign = cl.ffi.new("cl_uint[]", 1)
         n = self._lib.clGetDeviceInfo(
-            device_, cl.CL_DEVICE_MEM_BASE_ADDR_ALIGN, 4, memalign, sz)
+            handle, cl.CL_DEVICE_MEM_BASE_ADDR_ALIGN, 4, memalign, sz)
         self._memalign = memalign[0] if not n else None
-
-    @property
-    def handle(self):
-        """
-        cffi OpenCL device handle.
-        """
-        return self._handle
 
     @property
     def platform(self):
@@ -923,7 +873,6 @@ class Platform(CL):
     """OpenCL platform.
 
     Attributes:
-        handle: cffi OpenCL platform handle.
         devices: list of Device objects available on this platform.
         name: OpenCL name of the platform.
         path: opencl4py platform identifier.
@@ -962,10 +911,6 @@ class Platform(CL):
         List of Device objects available on this platform.
         """
         return self._devices
-
-    @property
-    def handle(self):
-        return self._handle
 
     @property
     def name(self):
