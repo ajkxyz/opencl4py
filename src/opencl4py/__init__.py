@@ -84,6 +84,7 @@ def realign_array(a, align, np):
     b = b[offs:offs + a.nbytes].view(dtype=a.dtype)
     b.shape = a.shape
     if b.__array_interface__["data"][0] % align != 0:
-        raise ValueError("Could not realign supplied numpy array")
+        raise ValueError("Could not realign numpy array with shape [%s]" %
+                         ", ".join(str(x) for x in a.shape))
     b[:] = a[:]
     return b
