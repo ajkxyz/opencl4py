@@ -160,6 +160,15 @@ def initialize(backends=("libOpenCL.so", "OpenCL.dll")):
                                          const char **strings,
                                          const size_t *lengths,
                                          cl_int *errcode_ret);
+
+    cl_program clCreateProgramWithBinary(cl_context context,
+                                         cl_uint num_devices,
+                                         const cl_device_id *device_list,
+                                         const size_t *lengths,
+                                         const unsigned char **binaries,
+                                         cl_int *binary_status,
+                                         cl_int *errcode_ret);
+
     cl_int clReleaseProgram(cl_program program);
     cl_int clBuildProgram(cl_program program,
                           cl_uint num_devices,
