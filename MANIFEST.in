@@ -1,5 +1,6 @@
 include src/opencl4py/*.py
 include tests/*.py
+include tests/*.cl
 include LICENSE
 include README
 include README.md
