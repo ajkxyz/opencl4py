@@ -259,7 +259,7 @@ class Queue(CL):
         super(Queue, self).__init__()
         self._context = context
         self._device = device
-        err = cl.ffi.new("cl_int[]", 1)
+        err = cl.ffi.new("cl_int *")
         self._handle = self._lib.clCreateCommandQueue(
             context.handle, device.handle, flags, err)
         if err[0]:
@@ -345,7 +345,7 @@ class Queue(CL):
                           ptr - pointer to the mapped buffer
                                 (cffi void* converted to int).
         """
-        err = cl.ffi.new("cl_int[]", 1)
+        err = cl.ffi.new("cl_int *")
         event = cl.ffi.new("cl_event[]", 1) if need_event else cl.NULL
         wait_list, n_events = CL.get_wait_list(wait_for)
         ptr = self._lib.clEnqueueMapBuffer(
@@ -475,7 +475,7 @@ class Buffer(CL):
         self._host_array = (host_array if flags & cl.CL_MEM_USE_HOST_PTR != 0
                             else None)
         host_ptr, size = CL.extract_ptr_and_size(host_array, size)
-        err = cl.ffi.new("cl_int[]", 1)
+        err = cl.ffi.new("cl_int *")
         self._handle = self._lib.clCreateBuffer(
             context.handle, flags, size, host_ptr, err)
         if err[0]:
@@ -532,7 +532,7 @@ class Kernel(CL):
         super(Kernel, self).__init__()
         self._program = program
         self._name = name
-        err = cl.ffi.new("cl_int[]", 1)
+        err = cl.ffi.new("cl_int *")
         ss = cl.ffi.new("char[]", name.encode("utf-8"))
         self._handle = self._lib.clCreateKernel(program.handle, ss, err)
         if err[0]:
@@ -612,6 +612,17 @@ class Program(CL):
         include_dirs: list of include dirs.
         options: additional build options.
     """
+
+    CL_PROGRAM_REFERENCE_COUNT = 0x1160
+    CL_PROGRAM_CONTEXT = 0x1161
+    CL_PROGRAM_NUM_DEVICES = 0x1162
+    CL_PROGRAM_DEVICES = 0x1163
+    CL_PROGRAM_SOURCE = 0x1164
+    CL_PROGRAM_BINARY_SIZES = 0x1165
+    CL_PROGRAM_BINARIES = 0x1166
+    CL_PROGRAM_NUM_KERNELS = 0x1167
+    CL_PROGRAM_KERNEL_NAMES = 0x1168
+
     def __init__(self, context, devices, src, include_dirs=(), options=""):
         super(Program, self).__init__()
         self._context = context
@@ -620,7 +631,7 @@ class Program(CL):
         self._include_dirs = list(include_dirs)
         self._options = options
         self._build_logs = []
-        err = cl.ffi.new("cl_int[]", 1)
+        err = cl.ffi.new("cl_int *")
         ss = cl.ffi.new("char[]", src.encode("utf-8"))
         strings = cl.ffi.new("char*[]", 1)
         strings[0] = cl.ffi.cast("char*", ss)
@@ -647,42 +658,84 @@ class Program(CL):
     @property
     def devices(self):
         """
-        list of Device objects associated with this program.
+        List of Device objects associated with this program.
         """
         return self._devices
 
     @property
     def build_logs(self):
         """
-        list of program build logs (same length as devices list).
+        List of program build logs (same length as devices list).
         """
         return self._build_logs
 
     @property
-    def src(self):
+    def source(self):
         """
-        program source.
+        Program source.
         """
         return self._src
 
     @property
     def include_dirs(self):
         """
-        list of include dirs.
+        List of include dirs.
         """
         return self._include_dirs
 
     @property
     def options(self):
         """
-        additional build options.
+        Additional build options.
         """
         return self._options
+
+    @property
+    def reference_count(self):
+        buf = cl.ffi.new("cl_uint *")
+        self._get_program_info(Program.CL_PROGRAM_REFERENCE_COUNT, buf)
+        return buf[0]
+
+    @property
+    def num_kernels(self):
+        buf = cl.ffi.new("size_t *")
+        self._get_program_info(Program.CL_PROGRAM_NUM_KERNELS, buf)
+        return buf[0]
+
+    @property
+    def kernel_names(self):
+        buf = cl.ffi.new("char[]", 4096)
+        self._get_program_info(Program.CL_PROGRAM_KERNEL_NAMES, buf)
+        names = cl.ffi.string(buf).decode("utf-8", "replace")
+        return names.split(';')
+
+    @property
+    def binaries(self):
+        buf = cl.ffi.new("size_t[]", len(self.devices))
+        self._get_program_info(Program.CL_PROGRAM_BINARY_SIZES, buf)
+        sizes = list(buf)
+        buf = cl.ffi.new("char *[]", len(self.devices))
+        for i in range(len(self.devices)):
+            buf[i] = cl.ffi.new("char[]", sizes[i])
+        self._get_program_info(Program.CL_PROGRAM_BINARIES, buf)
+        bins = []
+        for i in range(len(self.devices)):
+            bins.append(cl.ffi.buffer(buf[i], sizes[i])[:])
+        return bins
 
     def get_kernel(self, name):
         """Returns Kernel object from its name.
         """
         return Kernel(self, name)
+
+    def _get_program_info(self, code, buf):
+        sz = cl.ffi.new("size_t *")
+        err = self._lib.clGetProgramInfo(self.handle, code,
+                                         cl.ffi.sizeof(buf), buf, sz)
+        if err:
+            raise CLRuntimeError("clGetProgramInfo() failed with error %s\n" %
+                                 CL.get_error_description(err), err)
+        return sz[0]
 
     def _build_program(self, devices, options):
         n_devices = len(devices)
@@ -693,21 +746,22 @@ class Program(CL):
                                      options, cl.NULL, cl.NULL)
         del self.build_logs[:]
         log = cl.ffi.new("char[]", 65536)
-        sz = cl.ffi.new("size_t[]", 1)
+        sz = cl.ffi.new("size_t *")
         for dev in device_list:
             m = self._lib.clGetProgramBuildInfo(
-                self.handle, dev, cl.CL_PROGRAM_BUILD_LOG, 65536, log, sz)
+                self.handle, dev, cl.CL_PROGRAM_BUILD_LOG, cl.ffi.sizeof(log),
+                log, sz)
             if m or sz[0] <= 0:
                 self.build_logs.append("")
                 continue
-            self.build_logs.append(
-                (b"".join(log[0:sz[0] - 1])).decode("utf-8", "replace"))
+            self.build_logs.append(cl.ffi.string(log).decode("utf-8",
+                                                             "replace"))
         if n:
             raise CLRuntimeError(
                 "clBuildProgram() failed with error %s\n"
                 "Logs are:\n%s\nSource was:\n%s\n" %
                 (CL.get_error_description(n),
-                 "\n".join(self.build_logs), self.src), n)
+                 "\n".join(self.build_logs), self.source), n)
 
     def release(self):
         if self.handle is not None:
@@ -733,7 +787,7 @@ class Context(CL):
         props[0] = cl.CL_CONTEXT_PLATFORM
         props[1] = cl.ffi.cast("cl_context_properties", platform.handle)
         props[2] = 0
-        err = cl.ffi.new("cl_int[]", 1)
+        err = cl.ffi.new("cl_int *")
         n_devices = len(devices)
         device_list = cl.ffi.new("cl_device_id[]", n_devices)
         for i, dev in enumerate(devices):

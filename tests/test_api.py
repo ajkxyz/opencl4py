@@ -108,6 +108,21 @@ class Test(unittest.TestCase):
         a = cl.realign_array(a, 1056, numpy)
         self.assertEqual(a.__array_interface__["data"][0] % 1056, 0)
 
+    def test_program_info(self):
+        platforms = cl.Platforms()
+        ctx = platforms.create_some_context()
+        prg = ctx.create_program(self.src_test)
+        self.assertGreater(prg.reference_count, 0)
+        self.assertEqual(prg.num_kernels, 1)
+        names = prg.kernel_names
+        self.assertIsInstance(names, list)
+        self.assertEqual(len(names), 1)
+        self.assertEqual(names[0], "test")
+        bins = prg.binaries
+        self.assertEqual(len(bins), 1)
+        self.assertIsInstance(bins[0], bytes)
+        self.assertGreater(len(bins[0]), 0)
+
     def test_api_numpy(self):
         try:
             import numpy
