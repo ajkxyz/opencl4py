@@ -143,6 +143,7 @@ class Test(unittest.TestCase):
         prg = ctx.create_program(self.src_test, self.include_dirs)
         binary = prg.binaries[0]
         prg = ctx.create_program([binary], binary=True)
+        krn = prg.get_kernel("test")
 
     def test_api_numpy(self):
         try:
