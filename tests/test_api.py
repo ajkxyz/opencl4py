@@ -50,12 +50,9 @@ class Test(unittest.TestCase):
             os.environ["PYOPENCL_CTX"] = "0:0"
         self.src_test = (
             """
-            __kernel __attribute__((vec_type_hint(float4)))
-            void test(__global float *a, __global float *b, const float c) {
-              size_t i = get_global_id(0);
-              a[i] += b[i] * c;
-            }
+            #include "test.cl"
             """)
+        self.include_dirs = ("", os.path.dirname(__file__), ".")
 
     def tearDown(self):
         if self.old_env is None:
@@ -111,7 +108,7 @@ class Test(unittest.TestCase):
     def test_program_info(self):
         platforms = cl.Platforms()
         ctx = platforms.create_some_context()
-        prg = ctx.create_program(self.src_test)
+        prg = ctx.create_program(self.src_test, self.include_dirs)
         self.assertGreater(prg.reference_count, 0)
         try:
             self.assertEqual(prg.num_kernels, 1)
@@ -131,7 +128,7 @@ class Test(unittest.TestCase):
     def test_kernel_info(self):
         platforms = cl.Platforms()
         ctx = platforms.create_some_context()
-        prg = ctx.create_program(self.src_test)
+        prg = ctx.create_program(self.src_test, self.include_dirs)
         krn = prg.get_kernel("test")
         self.assertGreater(krn.reference_count, 0)
         self.assertEqual(krn.num_args, 3)
@@ -143,7 +140,7 @@ class Test(unittest.TestCase):
     def test_binary(self):
         platforms = cl.Platforms()
         ctx = platforms.create_some_context()
-        prg = ctx.create_program(self.src_test)
+        prg = ctx.create_program(self.src_test, self.include_dirs)
         binary = prg.binaries[0]
         prg = ctx.create_program([binary], binary=True)
 
@@ -158,7 +155,7 @@ class Test(unittest.TestCase):
         # Create platform, context, program, kernel and queue
         platforms = cl.Platforms()
         ctx = platforms.create_some_context()
-        prg = ctx.create_program(self.src_test)
+        prg = ctx.create_program(self.src_test, self.include_dirs)
         krn = prg.get_kernel("test")
         queue = ctx.create_queue(ctx.devices[0])
 
@@ -241,7 +238,7 @@ class Test(unittest.TestCase):
         # Create platform, context, program, kernel and queue
         platforms = cl.Platforms()
         ctx = platforms.create_some_context()
-        prg = ctx.create_program(self.src_test)
+        prg = ctx.create_program(self.src_test, self.include_dirs)
         krn = prg.get_kernel("test")
         # Create command queue
         queue = ctx.create_queue(ctx.devices[0])
@@ -354,7 +351,7 @@ class Test(unittest.TestCase):
         # Create platform, context, program, kernel and queue
         platforms = cl.Platforms()
         ctx = platforms.create_some_context()
-        prg = ctx.create_program(self.src_test)
+        prg = ctx.create_program(self.src_test, self.include_dirs)
         krn = prg.get_kernel("test")
         queue = ctx.create_queue(ctx.devices[0], cl.CL_QUEUE_PROFILING_ENABLE)
 
