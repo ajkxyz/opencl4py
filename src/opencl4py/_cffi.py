@@ -108,6 +108,7 @@ def initialize(backends=("libOpenCL.so", "OpenCL.dll")):
     typedef uint32_t cl_device_info;
     typedef uint32_t cl_program_build_info;
     typedef cl_uint  cl_program_info;
+    typedef cl_uint  cl_kernel_info;
     typedef uint32_t cl_kernel_work_group_info;
     typedef uint64_t cl_command_queue_properties;
     typedef uint64_t cl_mem_flags;
@@ -183,6 +184,12 @@ def initialize(backends=("libOpenCL.so", "OpenCL.dll")):
                              const char *kernel_name,
                              cl_int *errcode_ret);
     cl_int clReleaseKernel(cl_kernel kernel);
+    cl_int clGetKernelInfo(cl_kernel kernel,
+                           cl_kernel_info param_name,
+                           size_t param_value_size,
+                           void *param_value,
+                           size_t *param_value_size_ret);
+
     cl_int clGetKernelWorkGroupInfo(cl_kernel kernel,
                                     cl_device_id device,
                                     cl_kernel_work_group_info param_name,
