@@ -751,13 +751,18 @@ class Program(CL):
         buf = cl.ffi.new("size_t[]", len(self.devices))
         self._get_program_info(Program.CL_PROGRAM_BINARY_SIZES, buf)
         sizes = list(buf)
+        for i in range(len(sizes)):
+            sizes[i] *= 2  # NVIDIA and Intel return smaller than the actual
+                           # sizes. Looks like this is a bug; we have to live
+                           # with it. Alternatively, a constant value could be
+                           # provided without calling CL_PROGRAM_BINARY_SIZES.
         buf = cl.ffi.new("char *[]", len(self.devices))
         for i in range(len(self.devices)):
             buf[i] = cl.ffi.new("char[]", sizes[i])
         self._get_program_info(Program.CL_PROGRAM_BINARIES, buf)
         bins = []
         for i in range(len(self.devices)):
-            bins.append(cl.ffi.buffer(buf[i], sizes[i])[:])
+            bins.append(bytes(cl.ffi.buffer(buf[i], sizes[i])))
         return bins
 
     def get_kernel(self, name):
@@ -773,6 +778,20 @@ class Program(CL):
             raise CLRuntimeError("clGetProgramInfo() failed with error %s\n" %
                                  CL.get_error_description(err), err)
         return sz[0]
+
+    def _get_build_logs(self, device_list):
+        del self.build_logs[:]
+        log = cl.ffi.new("char[]", 65536)
+        sz = cl.ffi.new("size_t *")
+        for dev in device_list:
+            e = self._lib.clGetProgramBuildInfo(
+                self.handle, dev, cl.CL_PROGRAM_BUILD_LOG, cl.ffi.sizeof(log),
+                log, sz)
+            if e or sz[0] <= 0:
+                self.build_logs.append("")
+                continue
+            self.build_logs.append(cl.ffi.string(log).decode("utf-8",
+                                                             "replace"))
 
     def _create_program_from_source(self):
         err = cl.ffi.new("cl_int *")
@@ -798,26 +817,17 @@ class Program(CL):
         device_list = cl.ffi.new("cl_device_id[]", n_devices)
         for i, dev in enumerate(self.devices):
             device_list[i] = dev.handle
-        n = self._lib.clBuildProgram(self.handle, n_devices, device_list,
-                                     options, cl.NULL, cl.NULL)
-        del self.build_logs[:]
-        log = cl.ffi.new("char[]", 65536)
-        sz = cl.ffi.new("size_t *")
-        for dev in device_list:
-            m = self._lib.clGetProgramBuildInfo(
-                self.handle, dev, cl.CL_PROGRAM_BUILD_LOG, cl.ffi.sizeof(log),
-                log, sz)
-            if m or sz[0] <= 0:
-                self.build_logs.append("")
-                continue
-            self.build_logs.append(cl.ffi.string(log).decode("utf-8",
-                                                             "replace"))
-        if n:
+        err = self._lib.clBuildProgram(self.handle, n_devices, device_list,
+                                       options, cl.NULL, cl.NULL)
+        del options
+        self._get_build_logs(device_list)
+        if err:
             raise CLRuntimeError(
                 "clBuildProgram() failed with error %s\n"
                 "Logs are:\n%s\nSource was:\n%s\n" %
-                (CL.get_error_description(n),
-                 "\n".join(self.build_logs), self.source), n)
+                (CL.get_error_description(err), "\n".join(self.build_logs),
+                 self.source),
+                err)
 
     def _create_program_from_binary(self, src):
         count = len(self.devices)
@@ -830,17 +840,17 @@ class Program(CL):
         lengths = cl.ffi.new("size_t[]", count)
         for i, b in enumerate(src):
             lengths[i] = len(b)
-        binaries = cl.ffi.new("unsigned char *[]", count)
-        binaries_ref = []
+        binaries_ffi = cl.ffi.new("unsigned char *[]", count)
+        binaries_ref = []  # this is to prevent Python from garbage collecting
+                           # binaries_ffi[:]
         for i, b in enumerate(src):
             binaries_ref.append(cl.ffi.new("unsigned char[]", b))
-            binaries[i] = binaries_ref[i]
+            binaries_ffi[i] = binaries_ref[-1]
         binary_status = cl.ffi.new("cl_int[]", count)
         err = cl.ffi.new("cl_int *")
         self._handle = self._lib.clCreateProgramWithBinary(
-            self.context.handle, len(self.devices), device_list, lengths,
-            binaries, binary_status, err)
-        del binaries_ref
+            self.context.handle, count, device_list, lengths,
+            binaries_ffi, binary_status, err)
         if err[0]:
             self._handle = None
             statuses = [CL.get_error_name_from_code(s) for s in binary_status]
@@ -849,6 +859,16 @@ class Program(CL):
                                      CL.get_error_description(err[0]),
                                      ", ".join(statuses)),
                                  err[0])
+        err = self._lib.clBuildProgram(self.handle, count, device_list,
+                                       self.options, cl.NULL, cl.NULL)
+        del binaries_ref
+        self._get_build_logs(device_list)
+        if err:
+            raise CLRuntimeError("clBuildProgram() failed with error %s.\n"
+                                 "Logs are:\n%s" % (
+                                     CL.get_error_description(err),
+                                     "\n".join(self.build_logs)),
+                                 err)
 
     def release(self):
         if self.handle is not None:
