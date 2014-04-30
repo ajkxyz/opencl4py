@@ -140,6 +140,13 @@ class Test(unittest.TestCase):
         except cl.CLRuntimeError as e:
             self.assertEqual(e.code, -30)
 
+    def test_binary(self):
+        platforms = cl.Platforms()
+        ctx = platforms.create_some_context()
+        prg = ctx.create_program(self.src_test)
+        binary = prg.binaries[0]
+        prg = ctx.create_program([binary], binary=True)
+
     def test_api_numpy(self):
         try:
             import numpy

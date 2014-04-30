@@ -653,6 +653,8 @@ class Program(CL):
         src: program source.
         include_dirs: list of include dirs.
         options: additional build options.
+        binary: False if the program should be created from source; otherwise,
+                src is interpreted as precompiled binaries iterable.
     """
 
     CL_PROGRAM_REFERENCE_COUNT = 0x1160
@@ -665,30 +667,19 @@ class Program(CL):
     CL_PROGRAM_NUM_KERNELS = 0x1167
     CL_PROGRAM_KERNEL_NAMES = 0x1168
 
-    def __init__(self, context, devices, src, include_dirs=(), options=""):
+    def __init__(self, context, devices, src, include_dirs=(), options="",
+                 binary=False):
         super(Program, self).__init__()
         self._context = context
         self._devices = devices
-        self._src = src
+        self._src = src.encode("utf-8") if not binary else None
         self._include_dirs = list(include_dirs)
-        self._options = options
+        self._options = options.strip().encode("utf-8")
         self._build_logs = []
-        err = cl.ffi.new("cl_int *")
-        ss = cl.ffi.new("char[]", src.encode("utf-8"))
-        strings = cl.ffi.new("char*[]", 1)
-        strings[0] = cl.ffi.cast("char*", ss)
-        self._handle = self._lib.clCreateProgramWithSource(
-            context.handle, 1, strings, cl.NULL, err)
-        if err[0]:
-            self._handle = None
-            raise CLRuntimeError("clCreateProgramWithSource() failed with "
-                                 "error %d" % (err[0]), err[0])
-        for dirnme in include_dirs:
-            if not len(dirnme):
-                continue
-            options += " -I " + (dirnme if dirnme.find(" ") < 0
-                                 else "\'%s\'" % (dirnme))
-        self._build_program(devices, options.strip().encode("utf-8"))
+        if not binary:
+            self._create_program_from_source()
+        else:
+            self._create_program_from_binary(src)
 
     @property
     def context(self):
@@ -779,10 +770,28 @@ class Program(CL):
                                  CL.get_error_description(err), err)
         return sz[0]
 
-    def _build_program(self, devices, options):
-        n_devices = len(devices)
+    def _create_program_from_source(self):
+        err = cl.ffi.new("cl_int *")
+        srcptr = cl.ffi.new("char[]", self.source)
+        strings = cl.ffi.new("char*[]", 1)
+        strings[0] = srcptr
+        self._handle = self._lib.clCreateProgramWithSource(
+            self.context.handle, 1, strings, cl.NULL, err)
+        del srcptr
+        if err[0]:
+            self._handle = None
+            raise CLRuntimeError("clCreateProgramWithSource() failed with "
+                                 "error %s" %
+                                 CL.get_error_description(err[0]), err[0])
+        options = self.options
+        for dirnme in self.include_dirs:
+            if not len(dirnme):
+                continue
+            options += " -I " + (dirnme if dirnme.find(" ") < 0
+                                 else "\'%s\'" % (dirnme))
+        n_devices = len(self.devices)
         device_list = cl.ffi.new("cl_device_id[]", n_devices)
-        for i, dev in enumerate(devices):
+        for i, dev in enumerate(self.devices):
             device_list[i] = dev.handle
         n = self._lib.clBuildProgram(self.handle, n_devices, device_list,
                                      options, cl.NULL, cl.NULL)
@@ -804,6 +813,37 @@ class Program(CL):
                 "Logs are:\n%s\nSource was:\n%s\n" %
                 (CL.get_error_description(n),
                  "\n".join(self.build_logs), self.source), n)
+
+    def _create_program_from_binary(self, src):
+        count = len(self.devices)
+        if count != len(src):
+            raise ValueError("You have supplied %d binaries for %d devices" %
+                             (len(src), count))
+        device_list = cl.ffi.new("cl_device_id[]", count)
+        for i, dev in enumerate(self.devices):
+            device_list[i] = dev.handle
+        lengths = cl.ffi.new("size_t[]", count)
+        for i, b in enumerate(src):
+            lengths[i] = len(b)
+        binaries = cl.ffi.new("unsigned char *[]", count)
+        binaries_ref = []
+        for i, b in enumerate(src):
+            binaries_ref.append(cl.ffi.new("unsigned char[]", b))
+            binaries[i] = binaries_ref[i]
+        binary_status = cl.ffi.new("cl_int[]", count)
+        err = cl.ffi.new("cl_int *")
+        self._handle = self._lib.clCreateProgramWithBinary(
+            self.context.handle, len(self.devices), device_list, lengths,
+            binaries, binary_status, err)
+        del binaries_ref
+        if err[0]:
+            self._handle = None
+            statuses = [CL.get_error_name_from_code(s) for s in binary_status]
+            raise CLRuntimeError("clCreateProgramWithBinary() failed with "
+                                 "error %s; status %s" % (
+                                     CL.get_error_description(err[0]),
+                                     ", ".join(statuses)),
+                                 err[0])
 
     def release(self):
         if self.handle is not None:
@@ -880,7 +920,8 @@ class Context(CL):
         """
         return Buffer(self, flags, host_array, size)
 
-    def create_program(self, src, include_dirs=(), options="", devices=None):
+    def create_program(self, src, include_dirs=(), options="", devices=None,
+                       binary=False):
         """Creates and builds OpenCL program from source
            for the supplied devices associated with this context.
 
@@ -894,7 +935,7 @@ class Context(CL):
             Program object.
         """
         return Program(self, self.devices if devices is None else devices,
-                       src, include_dirs, options)
+                       src, include_dirs, options, binary)
 
     def release(self):
         if self.handle is not None:

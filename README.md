@@ -14,6 +14,7 @@ clCreateContext
 clCreateKernel
 clCreateKernel
 clCreateProgramWithSource
+clCreateProgramWithBinary
 clEnqueueMapBuffer
 clEnqueueNDRangeKernel
 clEnqueueReadBuffer
