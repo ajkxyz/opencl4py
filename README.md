@@ -26,6 +26,7 @@ clGetDeviceInfo
 clGetEventProfilingInfo
 clGetPlatformIDs
 clGetPlatformInfo
+clGetProgramInfo
 clGetProgramBuildInfo
 clReleaseCommandQueue
 clReleaseContext
