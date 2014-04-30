@@ -46,7 +46,8 @@ class Test(unittest.TestCase):
     def setUp(self):
         logging.basicConfig(level=logging.DEBUG)
         self.old_env = os.environ.get("PYOPENCL_CTX")
-        os.environ["PYOPENCL_CTX"] = "0:0"
+        if self.old_env is None:
+            os.environ["PYOPENCL_CTX"] = "0:0"
         self.src_test = (
             """
             __kernel void test(__global float *a,
