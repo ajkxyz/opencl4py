@@ -612,6 +612,17 @@ class Program(CL):
         include_dirs: list of include dirs.
         options: additional build options.
     """
+
+    CL_PROGRAM_REFERENCE_COUNT = 0x1160
+    CL_PROGRAM_CONTEXT = 0x1161
+    CL_PROGRAM_NUM_DEVICES = 0x1162
+    CL_PROGRAM_DEVICES = 0x1163
+    CL_PROGRAM_SOURCE = 0x1164
+    CL_PROGRAM_BINARY_SIZES = 0x1165
+    CL_PROGRAM_BINARIES = 0x1166
+    CL_PROGRAM_NUM_KERNELS = 0x1167
+    CL_PROGRAM_KERNEL_NAMES = 0x1168
+
     def __init__(self, context, devices, src, include_dirs=(), options=""):
         super(Program, self).__init__()
         self._context = context
@@ -679,10 +690,52 @@ class Program(CL):
         """
         return self._options
 
+    @property
+    def reference_count(self):
+        buf = cl.ffi.new("cl_uint *")
+        self._get_program_info(Program.CL_PROGRAM_REFERENCE_COUNT, buf)
+        return buf[0]
+
+    @property
+    def num_kernels(self):
+        buf = cl.ffi.new("size_t *")
+        self._get_program_info(Program.CL_PROGRAM_NUM_KERNELS, buf)
+        return buf[0]
+
+    @property
+    def kernel_names(self):
+        buf = cl.ffi.new("char[]", 4096)
+        self._get_program_info(Program.CL_PROGRAM_KERNEL_NAMES, buf)
+        names = cl.ffi.string(buf).decode("utf-8", "replace")
+        return names.split(';')
+
+    @property
+    def binaries(self):
+        buf = cl.ffi.new("size_t[]", len(self.devices))
+        self._get_program_info(Program.CL_PROGRAM_BINARY_SIZES, buf)
+        sizes = list(buf)
+        buf = cl.ffi.new("char *[]", len(self.devices))
+        for i in range(len(self.devices)):
+            buf[i] = cl.ffi.new("char[]", sizes[i])
+        self._get_program_info(Program.CL_PROGRAM_BINARIES, buf)
+        bins = []
+        for i in range(len(self.devices)):
+            bins.append(cl.ffi.buffer(buf[i], sizes[i])[:])
+        return bins
+
     def get_kernel(self, name):
         """Returns Kernel object from its name.
         """
         return Kernel(self, name)
+
+    def _get_program_info(self, code, buf):
+        sz = cl.ffi.new("size_t *")
+        err = self._lib.clGetProgramInfo(self.handle, code,
+                                         cl.ffi.sizeof(buf), buf, sz)
+        if err:
+            raise CLRuntimeError("clGetProgramInfo() failed with error %s\n" %
+                                 CL.get_error_description(err), err)
+        return sz[0]
 
     def _build_program(self, devices, options):
         n_devices = len(devices)
