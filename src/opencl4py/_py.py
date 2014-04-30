@@ -259,7 +259,7 @@ class Queue(CL):
         super(Queue, self).__init__()
         self._context = context
         self._device = device
-        err = cl.ffi.new("cl_int[]", 1)
+        err = cl.ffi.new("cl_int *")
         self._handle = self._lib.clCreateCommandQueue(
             context.handle, device.handle, flags, err)
         if err[0]:
@@ -345,7 +345,7 @@ class Queue(CL):
                           ptr - pointer to the mapped buffer
                                 (cffi void* converted to int).
         """
-        err = cl.ffi.new("cl_int[]", 1)
+        err = cl.ffi.new("cl_int *")
         event = cl.ffi.new("cl_event[]", 1) if need_event else cl.NULL
         wait_list, n_events = CL.get_wait_list(wait_for)
         ptr = self._lib.clEnqueueMapBuffer(
@@ -475,7 +475,7 @@ class Buffer(CL):
         self._host_array = (host_array if flags & cl.CL_MEM_USE_HOST_PTR != 0
                             else None)
         host_ptr, size = CL.extract_ptr_and_size(host_array, size)
-        err = cl.ffi.new("cl_int[]", 1)
+        err = cl.ffi.new("cl_int *")
         self._handle = self._lib.clCreateBuffer(
             context.handle, flags, size, host_ptr, err)
         if err[0]:
@@ -532,7 +532,7 @@ class Kernel(CL):
         super(Kernel, self).__init__()
         self._program = program
         self._name = name
-        err = cl.ffi.new("cl_int[]", 1)
+        err = cl.ffi.new("cl_int *")
         ss = cl.ffi.new("char[]", name.encode("utf-8"))
         self._handle = self._lib.clCreateKernel(program.handle, ss, err)
         if err[0]:
@@ -620,7 +620,7 @@ class Program(CL):
         self._include_dirs = list(include_dirs)
         self._options = options
         self._build_logs = []
-        err = cl.ffi.new("cl_int[]", 1)
+        err = cl.ffi.new("cl_int *")
         ss = cl.ffi.new("char[]", src.encode("utf-8"))
         strings = cl.ffi.new("char*[]", 1)
         strings[0] = cl.ffi.cast("char*", ss)
@@ -647,35 +647,35 @@ class Program(CL):
     @property
     def devices(self):
         """
-        list of Device objects associated with this program.
+        List of Device objects associated with this program.
         """
         return self._devices
 
     @property
     def build_logs(self):
         """
-        list of program build logs (same length as devices list).
+        List of program build logs (same length as devices list).
         """
         return self._build_logs
 
     @property
-    def src(self):
+    def source(self):
         """
-        program source.
+        Program source.
         """
         return self._src
 
     @property
     def include_dirs(self):
         """
-        list of include dirs.
+        List of include dirs.
         """
         return self._include_dirs
 
     @property
     def options(self):
         """
-        additional build options.
+        Additional build options.
         """
         return self._options
 
@@ -693,21 +693,22 @@ class Program(CL):
                                      options, cl.NULL, cl.NULL)
         del self.build_logs[:]
         log = cl.ffi.new("char[]", 65536)
-        sz = cl.ffi.new("size_t[]", 1)
+        sz = cl.ffi.new("size_t *")
         for dev in device_list:
             m = self._lib.clGetProgramBuildInfo(
-                self.handle, dev, cl.CL_PROGRAM_BUILD_LOG, 65536, log, sz)
+                self.handle, dev, cl.CL_PROGRAM_BUILD_LOG, cl.ffi.sizeof(log),
+                log, sz)
             if m or sz[0] <= 0:
                 self.build_logs.append("")
                 continue
-            self.build_logs.append(
-                (b"".join(log[0:sz[0] - 1])).decode("utf-8", "replace"))
+            self.build_logs.append(cl.ffi.string(log).decode("utf-8",
+                                                             "replace"))
         if n:
             raise CLRuntimeError(
                 "clBuildProgram() failed with error %s\n"
                 "Logs are:\n%s\nSource was:\n%s\n" %
                 (CL.get_error_description(n),
-                 "\n".join(self.build_logs), self.src), n)
+                 "\n".join(self.build_logs), self.source), n)
 
     def release(self):
         if self.handle is not None:
@@ -733,7 +734,7 @@ class Context(CL):
         props[0] = cl.CL_CONTEXT_PLATFORM
         props[1] = cl.ffi.cast("cl_context_properties", platform.handle)
         props[2] = 0
-        err = cl.ffi.new("cl_int[]", 1)
+        err = cl.ffi.new("cl_int *")
         n_devices = len(devices)
         device_list = cl.ffi.new("cl_device_id[]", n_devices)
         for i, dev in enumerate(devices):
