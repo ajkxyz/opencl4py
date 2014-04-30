@@ -49,9 +49,8 @@ class Test(unittest.TestCase):
         os.environ["PYOPENCL_CTX"] = "0:0"
         self.src_test = (
             """
-            __kernel void test(__global float *a,
-                               __global float *b,
-                               const float c) {
+            __kernel __attribute__((vec_type_hint(float4)))
+            void test(__global float *a, __global float *b, const float c) {
               size_t i = get_global_id(0);
               a[i] += b[i] * c;
             }
@@ -128,6 +127,18 @@ class Test(unittest.TestCase):
         self.assertIsInstance(bins[0], bytes)
         self.assertGreater(len(bins[0]), 0)
 
+    def test_kernel_info(self):
+        platforms = cl.Platforms()
+        ctx = platforms.create_some_context()
+        prg = ctx.create_program(self.src_test)
+        krn = prg.get_kernel("test")
+        self.assertGreater(krn.reference_count, 0)
+        self.assertEqual(krn.num_args, 3)
+        try:
+            self.assertEqual(krn.attributes, "vec_type_hint(float4)")
+        except cl.CLRuntimeError as e:
+            self.assertEqual(e.code, -30)
+
     def test_api_numpy(self):
         try:
             import numpy
@@ -162,9 +173,7 @@ class Test(unittest.TestCase):
                                b)
 
         # Set kernel arguments
-        krn.set_arg(0, a_)
-        krn.set_arg(1, b_)
-        krn.set_arg(2, c[0:1])
+        krn.set_args(a_, b_, c[0:1])
 
         # Execute kernel
         global_size = [a.size]

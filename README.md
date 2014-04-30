@@ -28,6 +28,7 @@ clGetPlatformIDs
 clGetPlatformInfo
 clGetProgramInfo
 clGetProgramBuildInfo
+clGetKernelInfo
 clReleaseCommandQueue
 clReleaseContext
 clReleaseEvent

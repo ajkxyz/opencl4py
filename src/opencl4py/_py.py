@@ -528,6 +528,14 @@ class Kernel(CL):
         program: Program object associated with this kernel.
         name: kernel name in the program.
     """
+
+    CL_KERNEL_FUNCTION_NAME = 0x1190
+    CL_KERNEL_NUM_ARGS = 0x1191
+    CL_KERNEL_REFERENCE_COUNT = 0x1192
+    CL_KERNEL_CONTEXT = 0x1193
+    CL_KERNEL_PROGRAM = 0x1194
+    CL_KERNEL_ATTRIBUTES = 0x1195
+
     def __init__(self, program, name):
         super(Kernel, self).__init__()
         self._program = program
@@ -553,6 +561,24 @@ class Kernel(CL):
         kernel name in the program.
         """
         return self._name
+
+    @property
+    def reference_count(self):
+        buf = cl.ffi.new("cl_uint *")
+        self._get_kernel_info(Kernel.CL_KERNEL_REFERENCE_COUNT, buf)
+        return buf[0]
+
+    @property
+    def num_args(self):
+        buf = cl.ffi.new("size_t *")
+        self._get_kernel_info(Kernel.CL_KERNEL_NUM_ARGS, buf)
+        return buf[0]
+
+    @property
+    def attributes(self):
+        buf = cl.ffi.new("char[]", 4096)
+        self._get_kernel_info(Kernel.CL_KERNEL_ATTRIBUTES, buf)
+        return cl.ffi.string(buf).decode("utf-8", "replace").strip()
 
     def set_arg(self, idx, vle, size=None):
         """Sets kernel argument.
@@ -592,10 +618,26 @@ class Kernel(CL):
             raise CLRuntimeError("clSetKernelArg() failed with "
                                  "error %d" % (n), n)
 
+    def set_args(self, *args):
+        for i, arg in enumerate(args):
+            if isinstance(arg, tuple) and len(arg) == 2:
+                self.set_arg(i, *arg)
+            else:
+                self.set_arg(i, arg)
+
     def release(self):
         if self.handle is not None:
             self._lib.clReleaseKernel(self.handle)
             self._handle = None
+
+    def _get_kernel_info(self, code, buf):
+        sz = cl.ffi.new("size_t *")
+        err = self._lib.clGetKernelInfo(self.handle, code,
+                                        cl.ffi.sizeof(buf), buf, sz)
+        if err:
+            raise CLRuntimeError("clGetKernelInfo() failed with error %s\n" %
+                                 CL.get_error_description(err), err)
+        return sz[0]
 
     def __del__(self):
         self.release()
