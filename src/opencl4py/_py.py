@@ -265,7 +265,9 @@ class Queue(CL):
         if err[0]:
             self._handle = None
             raise CLRuntimeError("clCreateCommandQueue() failed with "
-                                 "error %d" % (err[0]), err[0])
+                                 "error %s" %
+                                 CL.get_error_description(err[0]),
+                                 err[0])
 
     @property
     def context(self):
@@ -352,8 +354,8 @@ class Queue(CL):
             self.handle, buf.handle, blocking, flags, offset, size,
             n_events, wait_list, event, err)
         if err[0]:
-            raise CLRuntimeError("clEnqueueMapBuffer() failed with "
-                                 "error %d" % (err[0]), err[0])
+            raise CLRuntimeError("clEnqueueMapBuffer() failed with error %s" %
+                                 CL.get_error_description(err[0]), err[0])
         return (None if event == cl.NULL else Event(event[0]),
                 int(cl.ffi.cast("size_t", ptr)))
 
@@ -480,8 +482,9 @@ class Buffer(CL):
             context.handle, flags, size, host_ptr, err)
         if err[0]:
             self._handle = None
-            raise CLRuntimeError("clCreateBuffer() failed with "
-                                 "error %d" % (err[0]), err[0])
+            raise CLRuntimeError("clCreateBuffer() failed with error %s" %
+                                 CL.get_error_description(err[0]),
+                                 err[0])
 
     @property
     def context(self):
@@ -545,8 +548,9 @@ class Kernel(CL):
         self._handle = self._lib.clCreateKernel(program.handle, ss, err)
         if err[0]:
             self._handle = None
-            raise CLRuntimeError("clCreateKernel() failed with "
-                                 "error %d" % (err[0]), err[0])
+            raise CLRuntimeError("clCreateKernel() failed with error %s" %
+                                 CL.get_error_description(err[0]),
+                                 err[0])
 
     @property
     def program(self):
@@ -879,8 +883,9 @@ class Context(CL):
             props, n_devices, device_list, cl.NULL, cl.NULL, err)
         if err[0]:
             self._handle = None
-            raise CLRuntimeError("clCreateContext() failed with "
-                                 "error %d" % (err[0]), err[0])
+            raise CLRuntimeError("clCreateContext() failed with error %s" %
+                                 CL.get_error_description(err[0]),
+                                 err[0])
 
     @property
     def platform(self):
