@@ -762,7 +762,7 @@ class Program(CL):
         self._get_program_info(Program.CL_PROGRAM_BINARIES, buf)
         bins = []
         for i in range(len(self.devices)):
-            bins.append(bytes(cl.ffi.buffer(buf[i], sizes[i])))
+            bins.append(bytes(cl.ffi.buffer(buf[i], sizes[i])[0:sizes[i]]))
         return bins
 
     def get_kernel(self, name):
