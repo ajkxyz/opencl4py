@@ -532,13 +532,6 @@ class Kernel(CL):
         name: kernel name in the program.
     """
 
-    CL_KERNEL_FUNCTION_NAME = 0x1190
-    CL_KERNEL_NUM_ARGS = 0x1191
-    CL_KERNEL_REFERENCE_COUNT = 0x1192
-    CL_KERNEL_CONTEXT = 0x1193
-    CL_KERNEL_PROGRAM = 0x1194
-    CL_KERNEL_ATTRIBUTES = 0x1195
-
     def __init__(self, program, name):
         super(Kernel, self).__init__()
         self._program = program
@@ -569,19 +562,19 @@ class Kernel(CL):
     @property
     def reference_count(self):
         buf = cl.ffi.new("cl_uint *")
-        self._get_kernel_info(Kernel.CL_KERNEL_REFERENCE_COUNT, buf)
+        self._get_kernel_info(cl.CL_KERNEL_REFERENCE_COUNT, buf)
         return buf[0]
 
     @property
     def num_args(self):
         buf = cl.ffi.new("size_t *")
-        self._get_kernel_info(Kernel.CL_KERNEL_NUM_ARGS, buf)
+        self._get_kernel_info(cl.CL_KERNEL_NUM_ARGS, buf)
         return buf[0]
 
     @property
     def attributes(self):
         buf = cl.ffi.new("char[]", 4096)
-        self._get_kernel_info(Kernel.CL_KERNEL_ATTRIBUTES, buf)
+        self._get_kernel_info(cl.CL_KERNEL_ATTRIBUTES, buf)
         return cl.ffi.string(buf).decode("utf-8", "replace").strip()
 
     def set_arg(self, idx, vle, size=None):
@@ -661,16 +654,6 @@ class Program(CL):
                 src is interpreted as precompiled binaries iterable.
     """
 
-    CL_PROGRAM_REFERENCE_COUNT = 0x1160
-    CL_PROGRAM_CONTEXT = 0x1161
-    CL_PROGRAM_NUM_DEVICES = 0x1162
-    CL_PROGRAM_DEVICES = 0x1163
-    CL_PROGRAM_SOURCE = 0x1164
-    CL_PROGRAM_BINARY_SIZES = 0x1165
-    CL_PROGRAM_BINARIES = 0x1166
-    CL_PROGRAM_NUM_KERNELS = 0x1167
-    CL_PROGRAM_KERNEL_NAMES = 0x1168
-
     def __init__(self, context, devices, src, include_dirs=(), options="",
                  binary=False):
         super(Program, self).__init__()
@@ -730,32 +713,32 @@ class Program(CL):
     @property
     def reference_count(self):
         buf = cl.ffi.new("cl_uint *")
-        self._get_program_info(Program.CL_PROGRAM_REFERENCE_COUNT, buf)
+        self._get_program_info(cl.CL_PROGRAM_REFERENCE_COUNT, buf)
         return buf[0]
 
     @property
     def num_kernels(self):
         buf = cl.ffi.new("size_t *")
-        self._get_program_info(Program.CL_PROGRAM_NUM_KERNELS, buf)
+        self._get_program_info(cl.CL_PROGRAM_NUM_KERNELS, buf)
         return buf[0]
 
     @property
     def kernel_names(self):
         buf = cl.ffi.new("char[]", 4096)
-        self._get_program_info(Program.CL_PROGRAM_KERNEL_NAMES, buf)
+        self._get_program_info(cl.CL_PROGRAM_KERNEL_NAMES, buf)
         names = cl.ffi.string(buf).decode("utf-8", "replace")
         return names.split(';')
 
     @property
     def binaries(self):
         sizes = cl.ffi.new("size_t[]", len(self.devices))
-        self._get_program_info(Program.CL_PROGRAM_BINARY_SIZES, sizes)
+        self._get_program_info(cl.CL_PROGRAM_BINARY_SIZES, sizes)
         buf = cl.ffi.new("char *[]", len(self.devices))
         bufr = []  # to hold the references to cffi arrays
         for i in range(len(self.devices)):
             bufr.append(cl.ffi.new("char[]", sizes[i]))
             buf[i] = bufr[-1]
-        self._get_program_info(Program.CL_PROGRAM_BINARIES, buf)
+        self._get_program_info(cl.CL_PROGRAM_BINARIES, buf)
         bins = []
         for i in range(len(self.devices)):
             bins.append(bytes(cl.ffi.buffer(buf[i], sizes[i])[0:sizes[i]]))
@@ -990,48 +973,14 @@ class Device(CL):
         self._platform = platform
         self._path = path
 
-        sz = cl.ffi.new("size_t[]", 1)
-        tpe = cl.ffi.new("cl_device_type[]", 1)
-        n = self._lib.clGetDeviceInfo(handle, cl.CL_DEVICE_TYPE,
-                                      8, tpe, sz)
-        self._type = tpe[0] if not n else None
-
-        nme = cl.ffi.new("char[]", 256)
-        n = self._lib.clGetDeviceInfo(handle, cl.CL_DEVICE_NAME,
-                                      256, nme, sz)
-        self._name = ((b"".join(nme[0:sz[0] - 1])).decode("utf-8")
-                      if not n else None)
-
-        n = self._lib.clGetDeviceInfo(handle, cl.CL_DEVICE_OPENCL_C_VERSION,
-                                      256, nme, sz)
-        s = (b"".join(nme[0:sz[0] - 1])).decode("utf-8") if not n else None
-        self._version_string = s
+        self._version_string = self._get_device_info_str(
+            cl.CL_DEVICE_OPENCL_C_VERSION)
         n = len("OpenCL C ")
-        m = s.find(" ", n)
+        m = self._version_string.find(" ", n)
         try:
-            self._version = float(s[n:m])
+            self._version = float(self._version_string[n:m])
         except ValueError:
             self._version = 0.0
-
-        n = self._lib.clGetDeviceInfo(handle, cl.CL_DEVICE_VENDOR,
-                                      256, nme, sz)
-        self._vendor = ((b"".join(nme[0:sz[0] - 1])).decode("utf-8")
-                        if not n else None)
-
-        vendor_id = cl.ffi.new("cl_uint[]", 1)
-        n = self._lib.clGetDeviceInfo(handle, cl.CL_DEVICE_VENDOR_ID,
-                                      4, vendor_id, sz)
-        self._vendor_id = vendor_id[0] if not n else None
-
-        memsize = cl.ffi.new("cl_ulong[]", 1)
-        n = self._lib.clGetDeviceInfo(handle, cl.CL_DEVICE_GLOBAL_MEM_SIZE,
-                                      8, memsize, sz)
-        self._memsize = memsize[0] if not n else None
-
-        memalign = cl.ffi.new("cl_uint[]", 1)
-        n = self._lib.clGetDeviceInfo(
-            handle, cl.CL_DEVICE_MEM_BASE_ADDR_ALIGN, 4, memalign, sz)
-        self._memalign = memalign[0] if not n else None
 
     @property
     def platform(self):
@@ -1045,14 +994,14 @@ class Device(CL):
         """
         OpenCL type of the device (integer).
         """
-        return self._type
+        return self._get_device_info_int(cl.CL_DEVICE_TYPE)
 
     @property
     def name(self):
         """
         OpenCL name of the device.
         """
-        return self._name
+        return self._get_device_info_str(cl.CL_DEVICE_NAME)
 
     @property
     def path(self):
@@ -1080,28 +1029,287 @@ class Device(CL):
         """
         OpenCL vendor name of the device.
         """
-        return self._vendor
+        return self._get_device_info_str(cl.CL_DEVICE_VENDOR)
 
     @property
     def vendor_id(self):
         """
         OpenCL vendor id of the device (integer).
         """
-        return self._vendor_id
+        return self._get_device_info_int(cl.CL_DEVICE_VENDOR_ID)
 
     @property
     def memsize(self):
         """
-        global memory size of the device.
+        Global memory size of the device.
         """
-        return self._memsize
+        return self.global_memsize
 
     @property
     def memalign(self):
         """
-        align in bytes, required for clMapBuffer.
+        Alignment in bytes, required by clMapBuffer.
         """
-        return self._memalign
+        return self.mem_base_addr_align
+
+    @property
+    def available(self):
+        return self._get_device_info_bool(cl.CL_DEVICE_AVAILABLE)
+
+    @property
+    def compiler_available(self):
+        return self._get_device_info_bool(cl.CL_DEVICE_COMPILER_AVAILABLE)
+
+    @property
+    def little_endian(self):
+        return self._get_device_info_bool(cl.CL_DEVICE_ENDIAN_LITTLE)
+
+    @property
+    def supports_error_correction(self):
+        return self._get_device_info_bool(
+            cl.CL_DEVICE_ERROR_CORRECTION_SUPPORT)
+
+    @property
+    def host_unified_memory(self):
+        return self._get_device_info_bool(cl.CL_DEVICE_HOST_UNIFIED_MEMORY)
+
+    @property
+    def supports_images(self):
+        return self._get_device_info_bool(cl.CL_DEVICE_IMAGE_SUPPORT)
+
+    @property
+    def linker_available(self):
+        return self._get_device_info_bool(cl.CL_DEVICE_LINKER_AVAILABLE)
+
+    @property
+    def prefers_user_sync(self):
+        return self._get_device_info_bool(
+            cl.CL_DEVICE_PREFERRED_INTEROP_USER_SYNC)
+
+    @property
+    def address_bits(self):
+        return self._get_device_info_int(cl.CL_DEVICE_ADDRESS_BITS)
+
+    @property
+    def double_fp_config(self):
+        return self._get_device_info_int(cl.CL_DEVICE_DOUBLE_FP_CONFIG)
+
+    @property
+    def execution_capabilities(self):
+        return self._get_device_info_int(cl.CL_DEVICE_EXECUTION_CAPABILITIES)
+
+    @property
+    def address_bits(self):
+        return self._get_device_info_int(cl.CL_DEVICE_ADDRESS_BITS)
+
+    @property
+    def global_mem_cache_size(self):
+        return self._get_device_info_int(cl.CL_DEVICE_GLOBAL_MEM_CACHE_SIZE)
+
+    @property
+    def global_mem_cache_line_size(self):
+        return self._get_device_info_int(
+            cl.CL_DEVICE_GLOBAL_MEM_CACHELINE_SIZE)
+
+    @property
+    def half_fp_config(self):
+        return self._get_device_info_int(cl.CL_DEVICE_HALF_FP_CONFIG)
+
+    @property
+    def image2d_max_height(self):
+        return self._get_device_info_int(cl.CL_DEVICE_IMAGE2D_MAX_HEIGHT)
+
+    @property
+    def image2d_max_width(self):
+        return self._get_device_info_int(cl.CL_DEVICE_IMAGE2D_MAX_WIDTH)
+
+    @property
+    def image3d_max_depth(self):
+        return self._get_device_info_int(cl.CL_DEVICE_IMAGE3D_MAX_DEPTH)
+
+    @property
+    def image3d_max_height(self):
+        return self._get_device_info_int(cl.CL_DEVICE_IMAGE3D_MAX_HEIGHT)
+
+    @property
+    def image3d_max_width(self):
+        return self._get_device_info_int(cl.CL_DEVICE_IMAGE3D_MAX_WIDTH)
+
+    @property
+    def image_max_buffer_size(self):
+        return self._get_device_info_int(cl.CL_DEVICE_IMAGE_MAX_BUFFER_SIZE)
+
+    @property
+    def image_max_array_size(self):
+        return self._get_device_info_int(cl.CL_DEVICE_IMAGE_MAX_ARRAY_SIZE)
+
+    @property
+    def local_memsize(self):
+        return self._get_device_info_int(cl.CL_DEVICE_LOCAL_MEM_SIZE)
+
+    @property
+    def global_memsize(self):
+        return self._get_device_info_int(cl.CL_DEVICE_GLOBAL_MEM_SIZE)
+
+    @property
+    def max_clock_frequency(self):
+        return self._get_device_info_int(cl.CL_DEVICE_MAX_CLOCK_FREQUENCY)
+
+    @property
+    def max_compute_units(self):
+        return self._get_device_info_int(cl.CL_DEVICE_MAX_COMPUTE_UNITS)
+
+    @property
+    def max_constant_args(self):
+        return self._get_device_info_int(cl.CL_DEVICE_MAX_CONSTANT_ARGS)
+
+    @property
+    def max_constant_buffer_size(self):
+        return self._get_device_info_int(
+            cl.CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE)
+
+    @property
+    def max_mem_alloc_size(self):
+        return self._get_device_info_int(cl.CL_DEVICE_MAX_MEM_ALLOC_SIZE)
+
+    @property
+    def max_parameter_size(self):
+        return self._get_device_info_int(cl.CL_DEVICE_MAX_PARAMETER_SIZE)
+
+    @property
+    def max_read_image_args(self):
+        return self._get_device_info_int(cl.CL_DEVICE_MAX_READ_IMAGE_ARGS)
+
+    @property
+    def max_work_group_size(self):
+        return self._get_device_info_int(cl.CL_DEVICE_MAX_WORK_GROUP_SIZE)
+
+    @property
+    def max_work_item_dimensions(self):
+        return self._get_device_info_int(
+            cl.CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS)
+
+    @property
+    def max_write_image_args(self):
+        return self._get_device_info_int(cl.CL_DEVICE_MAX_WRITE_IMAGE_ARGS)
+
+    @property
+    def mem_base_addr_align(self):
+        return self._get_device_info_int(cl.CL_DEVICE_MEM_BASE_ADDR_ALIGN)
+
+    @property
+    def min_data_type_align_size(self):
+        return self._get_device_info_int(
+            cl.CL_DEVICE_MIN_DATA_TYPE_ALIGN_SIZE)
+
+    @property
+    def preferred_vector_width_char(self):
+        return self._get_device_info_int(
+            cl.CL_DEVICE_PREFERRED_VECTOR_WIDTH_CHAR)
+
+    @property
+    def preferred_vector_width_short(self):
+        return self._get_device_info_int(
+            cl.CL_DEVICE_PREFERRED_VECTOR_WIDTH_SHORT)
+
+    @property
+    def preferred_vector_width_int(self):
+        return self._get_device_info_int(
+            cl.CL_DEVICE_PREFERRED_VECTOR_WIDTH_INT)
+
+    @property
+    def preferred_vector_width_long(self):
+        return self._get_device_info_int(
+            cl.CL_DEVICE_PREFERRED_VECTOR_WIDTH_LONG)
+
+    @property
+    def preferred_vector_width_float(self):
+        return self._get_device_info_int(
+            cl.CL_DEVICE_PREFERRED_VECTOR_WIDTH_FLOAT)
+
+    @property
+    def preferred_vector_width_double(self):
+        return self._get_device_info_int(
+            cl.CL_DEVICE_PREFERRED_VECTOR_WIDTH_DOUBLE)
+
+    @property
+    def preferred_vector_width_half(self):
+        return self._get_device_info_int(
+            cl.CL_DEVICE_PREFERRED_VECTOR_WIDTH_HALF)
+
+    @property
+    def printf_buffer_size(self):
+        return self._get_device_info_int(cl.CL_DEVICE_PRINTF_BUFFER_SIZE)
+
+    @property
+    def profiling_timer_resolution(self):
+        return self._get_device_info_int(
+            cl.CL_DEVICE_PROFILING_TIMER_RESOLUTION)
+
+    @property
+    def reference_count(self):
+        return self._get_device_info_int(cl.CL_DEVICE_REFERENCE_COUNT)
+
+    @property
+    def single_fp_config(self):
+        return self._get_device_info_int(cl.CL_DEVICE_SINGLE_FP_CONFIG)
+
+    @property
+    def built_in_kernels(self):
+        return [kernel.strip() for kernel in self._get_device_info_str(
+            cl.CL_DEVICE_BUILT_IN_KERNELS).split(';')
+            if kernel.strip()]
+
+    @property
+    def extensions(self):
+        return [ext.strip() for ext in self._get_device_info_str(
+            cl.CL_DEVICE_EXTENSIONS).split(' ')
+            if ext.strip()]
+
+    @property
+    def profile(self):
+        return self._get_device_info_str(cl.CL_DEVICE_PROFILE)
+
+    @property
+    def driver_version(self):
+        return self._get_device_info_str(cl.CL_DRIVER_VERSION)
+
+    @property
+    def max_work_item_sizes(self):
+        value = cl.ffi.new("size_t[]", self.max_work_item_dimensions)
+        err = self._lib.clGetDeviceInfo(
+            self._handle, cl.CL_DEVICE_MAX_WORK_ITEM_SIZES,
+            cl.ffi.sizeof(value), value, cl.NULL)
+        if err:
+            return None
+        return list(value)
+
+    def _get_device_info_bool(self, name):
+        value = cl.ffi.new("cl_bool[]", 1)
+        err = self._lib.clGetDeviceInfo(self._handle, name,
+                                        cl.ffi.sizeof(value), value, cl.NULL)
+        if err:
+            raise CLRuntimeError("clGetDeviceInfo(%d) failed with error %s" %
+                                 (name, CL.get_error_description(err)), err)
+        return value[0]
+
+    def _get_device_info_int(self, name):
+        value = cl.ffi.new("uint64_t[]", 1)
+        err = self._lib.clGetDeviceInfo(self._handle, name,
+                                        cl.ffi.sizeof(value), value, cl.NULL)
+        if err:
+            raise CLRuntimeError("clGetDeviceInfo(%d) failed with error %s" %
+                                 (name, CL.get_error_description(err)), err)
+        return value[0]
+
+    def _get_device_info_str(self, name):
+        value = cl.ffi.new("char[]", 1024)
+        err = self._lib.clGetDeviceInfo(self._handle, name,
+                                        cl.ffi.sizeof(value), value, cl.NULL)
+        if err:
+            raise CLRuntimeError("clGetDeviceInfo(%d) failed with error %s" %
+                                 (name, CL.get_error_description(err)), err)
+        return cl.ffi.string(value).decode("utf-8")
 
 
 class Platform(CL):

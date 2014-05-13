@@ -105,6 +105,29 @@ class Test(unittest.TestCase):
         a = cl.realign_array(a, 1056, numpy)
         self.assertEqual(a.__array_interface__["data"][0] % 1056, 0)
 
+    def test_device_info(self):
+        platforms = cl.Platforms()
+        ctx = platforms.create_some_context()
+        dev = ctx.devices[0]
+        self.assertGreater(dev.max_work_item_dimensions, 0)
+        self.assertEqual(len(dev.max_work_item_sizes),
+                         dev.max_work_item_dimensions)
+        for size in dev.max_work_item_sizes:
+            self.assertGreater(size, 0)
+        self.assertIsInstance(dev.driver_version, str)
+        self.assertGreater(len(dev.driver_version), 0)
+        self.assertIsInstance(dev.built_in_kernels, list)
+        for krn in dev.built_in_kernels:
+            self.assertIsInstance(krn, str)
+            self.assertGreater(len(krn), 0)
+        self.assertIsInstance(dev.extensions, list)
+        for ext in dev.extensions:
+            self.assertIsInstance(ext, str)
+            self.assertGreater(len(ext), 0)
+        self.assertGreater(dev.preferred_vector_width_int, 0)
+        self.assertGreater(dev.max_work_group_size, 1)
+        self.assertTrue(dev.available)
+
     def test_program_info(self):
         platforms = cl.Platforms()
         ctx = platforms.create_some_context()
