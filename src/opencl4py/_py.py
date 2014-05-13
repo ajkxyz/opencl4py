@@ -1099,10 +1099,6 @@ class Device(CL):
         return self._get_device_info_int(cl.CL_DEVICE_EXECUTION_CAPABILITIES)
 
     @property
-    def address_bits(self):
-        return self._get_device_info_int(cl.CL_DEVICE_ADDRESS_BITS)
-
-    @property
     def global_mem_cache_size(self):
         return self._get_device_info_int(cl.CL_DEVICE_GLOBAL_MEM_CACHE_SIZE)
 
@@ -1291,7 +1287,7 @@ class Device(CL):
         if err:
             raise CLRuntimeError("clGetDeviceInfo(%d) failed with error %s" %
                                  (name, CL.get_error_description(err)), err)
-        return value[0]
+        return bool(value[0])
 
     def _get_device_info_int(self, name):
         value = cl.ffi.new("uint64_t[]", 1)
@@ -1300,7 +1296,7 @@ class Device(CL):
         if err:
             raise CLRuntimeError("clGetDeviceInfo(%d) failed with error %s" %
                                  (name, CL.get_error_description(err)), err)
-        return value[0]
+        return int(value[0])
 
     def _get_device_info_str(self, name):
         value = cl.ffi.new("char[]", 1024)

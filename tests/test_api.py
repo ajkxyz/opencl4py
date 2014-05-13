@@ -114,15 +114,20 @@ class Test(unittest.TestCase):
                          dev.max_work_item_dimensions)
         for size in dev.max_work_item_sizes:
             self.assertGreater(size, 0)
-        self.assertIsInstance(dev.driver_version, str)
+        self.assertIsInstance(dev.driver_version.encode("utf-8"), bytes)
         self.assertGreater(len(dev.driver_version), 0)
-        self.assertIsInstance(dev.built_in_kernels, list)
-        for krn in dev.built_in_kernels:
-            self.assertIsInstance(krn, str)
-            self.assertGreater(len(krn), 0)
+        try:
+            self.assertIsInstance(dev.built_in_kernels, list)
+            for krn in dev.built_in_kernels:
+                self.assertIsInstance(krn, str)
+                self.assertGreater(len(krn), 0)
+        except cl.CLRuntimeError as e:
+            if dev.version >= 1.2:
+                raise
+            self.assertEqual(e.code, -30)
         self.assertIsInstance(dev.extensions, list)
         for ext in dev.extensions:
-            self.assertIsInstance(ext, str)
+            self.assertIsInstance(ext.encode("utf-8"), bytes)
             self.assertGreater(len(ext), 0)
         self.assertGreater(dev.preferred_vector_width_int, 0)
         self.assertGreater(dev.max_work_group_size, 1)
