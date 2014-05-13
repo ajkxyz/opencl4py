@@ -759,6 +759,7 @@ class Program(CL):
         buf = cl.ffi.new("char *[]", len(self.devices))
         for i in range(len(self.devices)):
             buf[i] = cl.ffi.new("char[]", sizes[i])
+            self._lib.memset(buf[i], 0, sizes[i])
         self._get_program_info(Program.CL_PROGRAM_BINARIES, buf)
         bins = []
         for i in range(len(self.devices)):
