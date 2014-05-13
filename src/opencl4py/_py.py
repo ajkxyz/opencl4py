@@ -327,7 +327,7 @@ class Queue(CL):
             global_work_size, local_work_size, n_events, wait_list, event)
         if n:
             raise CLRuntimeError("clEnqueueNDRangeKernel() failed with "
-                                 "error %d" % (n), n)
+                                 "error %s" % CL.get_error_description(n), n)
         return Event(event[0]) if event != cl.NULL else None
 
     def map_buffer(self, buf, flags, size, blocking=True, offset=0,
