@@ -127,8 +127,6 @@ def initialize(backends=("libOpenCL.so", "OpenCL.dll")):
 
     typedef intptr_t cl_context_properties;
 
-    void *memset(void *s, int c, size_t n);
-
     cl_int clGetPlatformIDs(cl_uint num_entries,
                             cl_platform_id *platforms,
                             cl_uint *num_platforms);

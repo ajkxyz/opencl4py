@@ -748,22 +748,18 @@ class Program(CL):
 
     @property
     def binaries(self):
-        buf = cl.ffi.new("size_t[]", len(self.devices))
-        self._get_program_info(Program.CL_PROGRAM_BINARY_SIZES, buf)
-        sizes = list(buf)
-        for i in range(len(sizes)):
-            sizes[i] *= 2  # NVIDIA and Intel return smaller than the actual
-                           # sizes. Looks like this is a bug; we have to live
-                           # with it. Alternatively, a constant value could be
-                           # provided without calling CL_PROGRAM_BINARY_SIZES.
+        sizes = cl.ffi.new("size_t[]", len(self.devices))
+        self._get_program_info(Program.CL_PROGRAM_BINARY_SIZES, sizes)
         buf = cl.ffi.new("char *[]", len(self.devices))
+        bufr = []  # to hold the references to cffi arrays
         for i in range(len(self.devices)):
-            buf[i] = cl.ffi.new("char[]", sizes[i])
-            self._lib.memset(buf[i], 0, sizes[i])
+            bufr.append(cl.ffi.new("char[]", sizes[i]))
+            buf[i] = bufr[-1]
         self._get_program_info(Program.CL_PROGRAM_BINARIES, buf)
         bins = []
         for i in range(len(self.devices)):
             bins.append(bytes(cl.ffi.buffer(buf[i], sizes[i])[0:sizes[i]]))
+        del bufr
         return bins
 
     def get_kernel(self, name):
