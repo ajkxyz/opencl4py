@@ -195,7 +195,7 @@ class Event(CL):
         n = lib.clWaitForEvents(n_events, wait_list)
         if n:
             raise CLRuntimeError("clWaitForEvents() failed with "
-                                 "error %d" % (n), n)
+                                 "error %s" % CL.get_error_description(n), n)
 
     def wait(self):
         """Waits on this event.
@@ -235,8 +235,9 @@ class Event(CL):
             for err in errs.values():
                 if not err:
                     continue
-                raise CLRuntimeError("clGetEventProfilingInfo() failed with "
-                                     "error %d" % (err), err)
+                raise CLRuntimeError(
+                    "clGetEventProfilingInfo() failed with "
+                    "error %s" % CL.get_error_description(err), err)
         return (vles, errs)
 
     def release(self):
@@ -378,7 +379,7 @@ class Queue(CL):
             n_events, wait_list, event)
         if n:
             raise CLRuntimeError("clEnqueueUnmapMemObject() failed with "
-                                 "error %d" % (n), n)
+                                 "error %s" % CL.get_error_description(n), n)
         return Event(event[0]) if event != cl.NULL else None
 
     def read_buffer(self, buf, host_array, blocking=True, size=None, offset=0,
@@ -405,7 +406,7 @@ class Queue(CL):
             n_events, wait_list, event)
         if n:
             raise CLRuntimeError("clEnqueueReadBuffer() failed with "
-                                 "error %d" % (n), n)
+                                 "error %s" % CL.get_error_description(n), n)
         return Event(event[0]) if event != cl.NULL else None
 
     def write_buffer(self, buf, host_array, blocking=True, size=None, offset=0,
@@ -432,7 +433,7 @@ class Queue(CL):
             n_events, wait_list, event)
         if n:
             raise CLRuntimeError("clEnqueueReadBuffer() failed with "
-                                 "error %d" % (n), n)
+                                 "error %s" % CL.get_error_description(n), n)
         return Event(event[0]) if event != cl.NULL else None
 
     def flush(self):
