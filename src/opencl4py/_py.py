@@ -327,7 +327,7 @@ class Queue(CL):
             global_work_size, local_work_size, n_events, wait_list, event)
         if n:
             raise CLRuntimeError("clEnqueueNDRangeKernel() failed with "
-                                 "error %d" % (n), n)
+                                 "error %s" % CL.get_error_description(n), n)
         return Event(event[0]) if event != cl.NULL else None
 
     def map_buffer(self, buf, flags, size, blocking=True, offset=0,
@@ -759,6 +759,7 @@ class Program(CL):
         buf = cl.ffi.new("char *[]", len(self.devices))
         for i in range(len(self.devices)):
             buf[i] = cl.ffi.new("char[]", sizes[i])
+            self._lib.memset(buf[i], 0, sizes[i])
         self._get_program_info(Program.CL_PROGRAM_BINARIES, buf)
         bins = []
         for i in range(len(self.devices)):
