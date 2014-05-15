@@ -618,6 +618,8 @@ class Kernel(CL):
 
     def set_args(self, *args):
         for i, arg in enumerate(args):
+            if arg is None:
+                continue
             if isinstance(arg, tuple) and len(arg) == 2:
                 self.set_arg(i, *arg)
             else:
