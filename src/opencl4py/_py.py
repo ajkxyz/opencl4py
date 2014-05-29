@@ -525,6 +525,25 @@ class Buffer(CL):
         self.release()
 
 
+class skip(object):
+    """A marker to skip setting arguments in Kernel.set_args.
+    Passing in the class type makes set_args to skip setting one argument;
+    passing skip(n) makes set_args skip n arguments.
+    """
+    def __init__(self, number):
+        self.number = number
+
+    @property
+    def number(self):
+        return self._number
+
+    @number.setter
+    def number(self, value):
+        if value < 1:
+            raise ValueError("number must be greater than 0")
+        self._number = value
+
+
 class Kernel(CL):
     """Holds OpenCL kernel.
 
@@ -619,8 +638,13 @@ class Kernel(CL):
                                  n)
 
     def set_args(self, *args):
+        skip_until = 0
         for i, arg in enumerate(args):
-            if arg is None:
+            if arg is skip:
+                continue
+            if isinstance(arg, skip):
+                skip_until = i + arg.number
+            if i < skip_until:
                 continue
             if isinstance(arg, tuple) and len(arg) == 2:
                 self.set_arg(i, *arg)

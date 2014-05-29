@@ -173,6 +173,38 @@ class Test(unittest.TestCase):
         prg = ctx.create_program([binary], binary=True)
         krn = prg.get_kernel("test")
 
+    def set_kernel_args(self):
+        platforms = cl.Platforms()
+        ctx = platforms.create_some_context()
+        prg = ctx.create_program(self.src_test, self.include_dirs)
+        krn = prg.get_kernel("test")
+        queue = ctx.create_queue(ctx.devices[0])
+        global_size = [a.size]
+        local_size = None
+
+        krn.set_args(cl.skip(3))
+        self.assertRaises(CLRuntimeError,
+                          queue.execute_kernel(krn, global_size, local_size))
+        krn.set_args(cl.skip. cl.skip, cl.skip)
+        self.assertRaises(CLRuntimeError,
+                          queue.execute_kernel(krn, global_size, local_size))
+        krn.set_args(cl.skip(1). cl.skip(1), cl.skip(1))
+        self.assertRaises(CLRuntimeError,
+                          queue.execute_kernel(krn, global_size, local_size))
+        krn.set_args(cl.skip(1000))
+        self.assertRaises(CLRuntimeError,
+                          queue.execute_kernel(krn, global_size, local_size))
+        self.assertRaises(ValueError, cl.skip, 0)
+        self.assertRaises(ValueError, cl.skip, -1)
+
+        c = numpy.array([1.2345], dtype=numpy.float32)
+        krn.set_args(cl.skip(2), c)
+        self.assertRaises(CLRuntimeError,
+                          queue.execute_kernel(krn, global_size, local_size))
+        krn.set_args(cl.skip, cl.skip, c)
+        self.assertRaises(CLRuntimeError,
+                          queue.execute_kernel(krn, global_size, local_size))
+
     def test_api_numpy(self):
         try:
             import numpy
