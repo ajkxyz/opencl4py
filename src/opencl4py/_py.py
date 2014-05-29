@@ -613,8 +613,10 @@ class Kernel(CL):
                              "in Kernel::set_arg()")
         n = self._lib.clSetKernelArg(self.handle, idx, arg_size, arg_value)
         if n:
-            raise CLRuntimeError("clSetKernelArg() failed with "
-                                 "error %s" % CL.get_error_description(n), n)
+            raise CLRuntimeError("clSetKernelArg(%d, %s) failed with error "
+                                 "%s" % (idx, repr(vle),
+                                         CL.get_error_description(n)),
+                                 n)
 
     def set_args(self, *args):
         for i, arg in enumerate(args):
