@@ -638,18 +638,19 @@ class Kernel(CL):
                                  n)
 
     def set_args(self, *args):
-        skip_until = 0
-        for i, arg in enumerate(args):
+        i = 0
+        for arg in args:
             if arg is skip:
+                i += 1
                 continue
             if isinstance(arg, skip):
-                skip_until = i + arg.number
-            if i < skip_until:
+                i += arg.number
                 continue
             if isinstance(arg, tuple) and len(arg) == 2:
                 self.set_arg(i, *arg)
             else:
                 self.set_arg(i, arg)
+            i += 1
 
     def release(self):
         if self.handle is not None:
