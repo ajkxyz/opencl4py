@@ -38,7 +38,7 @@ Init module.
 """
 
 # High-level interface.
-from opencl4py._py import Platforms, Context, CLRuntimeError
+from opencl4py._py import Platforms, Context, CLRuntimeError, skip
 
 # Low-level interface.
 from opencl4py._cffi import ffi, lib, initialize
