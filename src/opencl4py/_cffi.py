@@ -29,7 +29,7 @@ either expressed or implied, of Samsung Electronics Co.,Ltd..
 
 """
 opencl4py - OpenCL cffi bindings and helper classes.
-URL: https://github.com/ajkxyz/opencl4py
+URL: https://github.com/Samsung/opencl4py
 Original author: Alexey Kazantsev <a.kazantsev@samsung.com>
 """
 
@@ -343,6 +343,28 @@ def initialize(backends=("libOpenCL.so", "OpenCL.dll")):
                                 cl_uint num_events_in_wait_list,
                                 const cl_event *event_wait_list,
                                 cl_event *event);
+    cl_int clEnqueueCopyBuffer(cl_command_queue command_queue,
+                               cl_mem src_buffer,
+                               cl_mem dst_buffer,
+                               size_t src_offset,
+                               size_t dst_offset,
+                               size_t size,
+                               cl_uint num_events_in_wait_list,
+                               const cl_event *event_wait_list,
+                               cl_event *event);
+    cl_int clEnqueueCopyBufferRect(cl_command_queue command_queue,
+                                   cl_mem src_buffer,
+                                   cl_mem dst_buffer,
+                                   const size_t *src_origin,
+                                   const size_t *dst_origin,
+                                   const size_t *region,
+                                   size_t src_row_pitch,
+                                   size_t src_slice_pitch,
+                                   size_t dst_row_pitch,
+                                   size_t dst_slice_pitch,
+                                   cl_uint num_events_in_wait_list,
+                                   const cl_event *event_wait_list,
+                                   cl_event *event);
 
     cl_int clWaitForEvents(cl_uint num_events,
                            const cl_event *event_list);

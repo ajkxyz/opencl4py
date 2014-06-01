@@ -29,7 +29,7 @@ either expressed or implied, of Samsung Electronics Co.,Ltd..
 
 """
 opencl4py - OpenCL cffi bindings and helper classes.
-URL: https://github.com/ajkxyz/opencl4py
+URL: https://github.com/Samsung/opencl4py
 Original author: Alexey Kazantsev <a.kazantsev@samsung.com>
 """
 
@@ -94,13 +94,7 @@ class Test(unittest.TestCase):
         del ctx
 
     def test_realign_numpy_array(self):
-        try:
-            import numpy
-        except ImportError:  # for pypy
-            try:
-                import numpypy as numpy
-            except ImportError:
-                raise ImportError("Could not import numpy")
+        import numpy
         a = numpy.empty(1000, dtype=numpy.float32)
         a = cl.realign_array(a, 1056, numpy)
         self.assertEqual(a.__array_interface__["data"][0] % 1056, 0)
@@ -206,13 +200,7 @@ class Test(unittest.TestCase):
                           queue.execute_kernel(krn, global_size, local_size))
 
     def test_api_numpy(self):
-        try:
-            import numpy
-        except ImportError:  # for pypy
-            try:
-                import numpypy as numpy
-            except ImportError:
-                raise ImportError("Could not import numpy")
+        import numpy
         # Create platform, context, program, kernel and queue
         platforms = cl.Platforms()
         ctx = platforms.create_some_context()
@@ -448,6 +436,66 @@ class Test(unittest.TestCase):
             self.assertTrue((vle and not err) or (not vle and err))
             self.assertEqual(type(vle), float)
             self.assertEqual(type(err), int)
+
+    def test_copy_buffer(self):
+        import numpy
+        # Create platform, context and queue
+        platforms = cl.Platforms()
+        ctx = platforms.create_some_context()
+        queue = ctx.create_queue(ctx.devices[0])
+
+        # Create arrays with some values for testing
+        a = numpy.arange(10000, dtype=numpy.float32)
+        b = a * 0.5
+        c = numpy.empty_like(b)
+        c[:] = 1.0e30
+
+        # Create buffers
+        a_ = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,
+                               a)
+        b_ = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,
+                               b)
+
+        # Copy some data from one buffer to another
+        sz = a.itemsize
+        ev = queue.copy_buffer(a_, b_, 1000 * sz, 2000 * sz, 3000 * sz)
+        ev.wait()
+
+        queue.read_buffer(b_, c)
+        diff = numpy.fabs(c[2000:5000] - a[1000:4000]).max()
+        self.assertEqual(diff, 0)
+
+    def test_copy_buffer_rect(self):
+        import numpy
+        # Create platform, context and queue
+        platforms = cl.Platforms()
+        ctx = platforms.create_some_context()
+        queue = ctx.create_queue(ctx.devices[0])
+
+        # Create arrays with some values for testing
+        a = numpy.arange(35 * 25 * 15, dtype=numpy.float32).reshape(35, 25, 15)
+        b = numpy.arange(37 * 27 * 17, dtype=numpy.float32).reshape(37, 27, 17)
+        b *= 0.5
+        c = numpy.empty_like(b)
+        c[:] = 1.0e30
+
+        # Create buffers
+        a_ = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,
+                               a)
+        b_ = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,
+                               b)
+
+        # Copy 3D rect from one buffer to another
+        sz = a.itemsize
+        ev = queue.copy_buffer_rect(
+            a_, b_, (3 * sz, 4, 5), (6 * sz, 7, 8), (5 * sz, 10, 20),
+            a.shape[2] * sz, a.shape[1] * a.shape[2] * sz,
+            b.shape[2] * sz, b.shape[1] * b.shape[2] * sz)
+        ev.wait()
+
+        queue.read_buffer(b_, c)
+        diff = numpy.fabs(c[8:28, 7:17, 6:11] - a[5:25, 4:14, 3:8]).max()
+        self.assertEqual(diff, 0)
 
 
 if __name__ == "__main__":

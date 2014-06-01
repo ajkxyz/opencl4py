@@ -29,7 +29,7 @@ either expressed or implied, of Samsung Electronics Co.,Ltd..
 
 """
 opencl4py - OpenCL cffi bindings and helper classes.
-URL: https://github.com/ajkxyz/opencl4py
+URL: https://github.com/Samsung/opencl4py
 Original author: Alexey Kazantsev <a.kazantsev@samsung.com>
 """
 
@@ -436,6 +436,80 @@ class Queue(CL):
                                  "error %s" % CL.get_error_description(n), n)
         return Event(event[0]) if event != cl.NULL else None
 
+    def copy_buffer(self, src, dst, src_offset, dst_offset, size,
+                    wait_for=None, need_event=True):
+        """Enqueues a command to copy from one buffer object to another.
+
+        Parameters:
+            src: source Buffer object.
+            dst: destination Buffer object.
+            src_offset: offset in bytes where to begin copying data from src.
+            dst_offset: offset in bytes where to begin copying data into dst.
+            size: number of bytes to copy.
+            wait_for: list of the Event objects to wait.
+            need_event: return Event object or not.
+
+        Returns:
+            Event object or None if need_event == False.
+        """
+        event = cl.ffi.new("cl_event[]", 1) if need_event else cl.NULL
+        wait_list, n_events = CL.get_wait_list(wait_for)
+        n = self._lib.clEnqueueCopyBuffer(
+            self.handle, src.handle, dst.handle, src_offset, dst_offset, size,
+            n_events, wait_list, event)
+        if n:
+            raise CLRuntimeError("clEnqueueCopyBuffer() failed with "
+                                 "error %s" % CL.get_error_description(n), n)
+        return Event(event[0]) if event != cl.NULL else None
+
+    def copy_buffer_rect(self, src, dst, src_origin, dst_origin, region,
+                         src_row_pitch=0, src_slice_pitch=0,
+                         dst_row_pitch=0, dst_slice_pitch=0,
+                         wait_for=None, need_event=True):
+        """Enqueues a command to copy a 3D rectangular region from one
+        buffer object to another.
+
+        Parameters:
+            src: source Buffer object.
+            dst: destination Buffer object.
+            src_origin: the (x in bytes, y, z) in the source buffer,
+                        offset in bytes is computed as:
+                        z * src_slice_pitch + y * src_row_pitch + x.
+            dst_origin: the (x in bytes, y, z) in the destination buffer,
+                        offset in bytes is computed as:
+                        z * dst_slice_pitch + y * dst_row_pitch + x.
+            region: the (width in bytes, height, depth)
+                    of the rectangle being copied.
+            src_row_pitch: the length of each source row in bytes,
+                           if 0, region[0] will be used.
+            src_slice_pitch: the length of each 2D source slice in bytes,
+                             if 0, region[1] * src_row_pitch will be used.
+            dst_row_pitch: the length of each destination row in bytes,
+                           if 0, region[0] will be used.
+            dst_slice_pitch: the length of each 2D destination slice in bytes,
+                             if 0, region[1] * src_row_pitch will be used.
+            wait_for: list of the Event objects to wait.
+            need_event: return Event object or not.
+
+        Returns:
+            Event object or None if need_event == False.
+        """
+        event = cl.ffi.new("cl_event[]", 1) if need_event else cl.NULL
+        wait_list, n_events = CL.get_wait_list(wait_for)
+        _src_origin = cl.ffi.new("size_t[]", src_origin)
+        _dst_origin = cl.ffi.new("size_t[]", dst_origin)
+        _region = cl.ffi.new("size_t[]", region)
+        n = self._lib.clEnqueueCopyBufferRect(
+            self.handle, src.handle, dst.handle,
+            _src_origin, _dst_origin, _region,
+            src_row_pitch, src_slice_pitch,
+            dst_row_pitch, dst_slice_pitch,
+            n_events, wait_list, event)
+        if n:
+            raise CLRuntimeError("clEnqueueCopyBufferRect() failed with "
+                                 "error %s" % CL.get_error_description(n), n)
+        return Event(event[0]) if event != cl.NULL else None
+
     def flush(self):
         """Flushes the queue.
         """
@@ -478,6 +552,7 @@ class Buffer(CL):
         self._host_array = (host_array if flags & cl.CL_MEM_USE_HOST_PTR != 0
                             else None)
         host_ptr, size = CL.extract_ptr_and_size(host_array, size)
+        self._size = size
         err = cl.ffi.new("cl_int *")
         self._handle = self._lib.clCreateBuffer(
             context.handle, flags, size, host_ptr, err)
