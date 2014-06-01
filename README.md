@@ -3,7 +3,7 @@ opencl4py
 
 Python cffi OpenCL bindings and helper classes.
 
-Tested with Python 2.7, Python 3.3 and PyPy on Linux and Windows.
+Tested with Python 2.7, Python 3.3, Python 3.4 and PyPy on Linux and Windows.
 
 Covered OpenCL API:
 ```
@@ -15,6 +15,8 @@ clCreateKernel
 clCreateKernel
 clCreateProgramWithSource
 clCreateProgramWithBinary
+clEnqueueCopyBuffer
+clEnqueueCopyBufferRect
 clEnqueueMapBuffer
 clEnqueueNDRangeKernel
 clEnqueueReadBuffer
@@ -55,7 +57,7 @@ for Python 2.7:
 PYTHONPATH=src nosetests -w tests
 ```
 
-for Python 3.3:
+for Python 3.3, 3.4:
 ```bash
 PYTHONPATH=src nosetests3 -w tests
 ```

@@ -29,7 +29,7 @@ either expressed or implied, of Samsung Electronics Co.,Ltd..
 
 """
 opencl4py - OpenCL cffi bindings and helper classes.
-URL: https://github.com/ajkxyz/opencl4py
+URL: https://github.com/Samsung/opencl4py
 Original author: Alexey Kazantsev <a.kazantsev@samsung.com>
 """
 
@@ -42,7 +42,7 @@ from distutils.core import setup
 setup(
     name="opencl4py",
     description="OpenCL cffi bindings and helper classes",
-    version="1.2.5",
+    version="1.2.6",
     license="Simplified BSD",
     author="Samsung Electronics Co.,Ltd.",
     author_email="a.kazantsev@samsung.com",
