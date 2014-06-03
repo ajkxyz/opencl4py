@@ -497,6 +497,64 @@ class Test(unittest.TestCase):
         diff = numpy.fabs(c[8:28, 7:17, 6:11] - a[5:25, 4:14, 3:8]).max()
         self.assertEqual(diff, 0)
 
+    def test_set_arg_None(self):
+        import numpy
+        # Create platform, context, program, kernel and queue
+        platforms = cl.Platforms()
+        ctx = platforms.create_some_context()
+        src = """
+        __kernel void test(__global float *a, __global const float *b,
+                           __global const float *c) {
+            int idx = get_global_id(0);
+            a[idx] += b[idx] + (c ? c[idx] : 0);
+        }
+        """
+        prg = ctx.create_program(src)
+        krn = prg.get_kernel("test")
+        queue = ctx.create_queue(ctx.devices[0])
+
+        # Create arrays with some values for testing
+        a = numpy.array([1, 2, 3, 4, 5], dtype=numpy.float32)
+        b = numpy.array([6, 7, 8, 9, 10], dtype=numpy.float32)
+        c = numpy.array([11, 12, 13, 14, 15], dtype=numpy.float32)
+
+        # Create buffers
+        a_ = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,
+                               a)
+        b_ = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,
+                               b)
+        c_ = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,
+                               c)
+
+        # Set kernel arguments
+        krn.set_arg(0, a_)
+        krn.set_arg(1, b_)
+        krn.set_arg(2, c_)
+
+        # Execute kernel
+        ev = queue.execute_kernel(krn, [a.size], None)
+        ev.wait()
+
+        # Get results back
+        d = numpy.zeros_like(a)
+        queue.read_buffer(a_, d)
+        t = a + b + c
+        diff = numpy.fabs(d - t).max()
+        self.assertEqual(diff, 0)
+
+        # Set arg to None
+        krn.set_arg(2, None)
+
+        # Execute kernel
+        ev = queue.execute_kernel(krn, [a.size], None)
+        ev.wait()
+
+        # Get results back
+        queue.read_buffer(a_, d)
+        t += b
+        diff = numpy.fabs(d - t).max()
+        self.assertEqual(diff, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

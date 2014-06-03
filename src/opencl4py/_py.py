@@ -695,7 +695,7 @@ class Kernel(CL):
             arg_size = vle.nbytes if size is None else size
         elif vle is None:
             arg_value = cl.NULL
-            arg_size = 0
+            arg_size = cl.ffi.sizeof("cl_mem") if size is None else size
         elif type(vle) == type(cl.NULL):  # cffi pointer
             arg_value = cl.ffi.cast("const void*", vle)
             if size is None:
