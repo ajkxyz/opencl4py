@@ -544,8 +544,11 @@ class Buffer(CL):
         host_array: host array reference, such as numpy array,
                     will be stored only if flags include CL_MEM_USE_HOST_PTR.
         size: size of the host array.
+        parent: parent buffer if this one should be created as sub buffer.
+        origin: origin of the sub buffer if parent is not None.
     """
-    def __init__(self, context, flags, host_array, size=None):
+    def __init__(self, context, flags, host_array, size=None,
+                 parent=None, origin=0):
         super(Buffer, self).__init__()
         self._context = context
         self._flags = flags
@@ -553,14 +556,37 @@ class Buffer(CL):
                             else None)
         host_ptr, size = CL.extract_ptr_and_size(host_array, size)
         self._size = size
+        self._parent = parent
+        self._origin = origin
         err = cl.ffi.new("cl_int *")
-        self._handle = self._lib.clCreateBuffer(
-            context.handle, flags, size, host_ptr, err)
+        if parent is None:
+            self._handle = self._lib.clCreateBuffer(
+                context.handle, flags, size, host_ptr, err)
+        else:
+            info = cl.ffi.new("size_t[]", 2)
+            info[0] = origin
+            info[1] = size
+            self._handle = self._lib.clCreateSubBuffer(
+                parent.handle, flags, cl.CL_BUFFER_CREATE_TYPE_REGION,
+                info, err)
         if err[0]:
             self._handle = None
-            raise CLRuntimeError("clCreateBuffer() failed with error %s" %
-                                 CL.get_error_description(err[0]),
-                                 err[0])
+            raise CLRuntimeError(
+                "%s failed with error %s" %
+                ("clCreateBuffer()" if parent is None else "clCreateSubBuffer",
+                 CL.get_error_description(err[0])), err[0])
+
+    def create_sub_buffer(self, origin, size, flags=0):
+        """Creates subbufer from the region of the original buffer.
+
+        Parameters:
+            flags: flags for the creation of this buffer
+                   (0 - inherit all from the original buffer).
+            origin: offset in bytes in the original buffer
+            size: size in bytes of the new buffer.
+        """
+        return Buffer(self._context, flags, self._host_array, size,
+                      self, origin)
 
     @property
     def context(self):
@@ -590,6 +616,12 @@ class Buffer(CL):
         Size of the host array.
         """
         return self._size
+
+    @property
+    def parent(self):
+        """Returns parent buffer if this buffer is a sub buffer.
+        """
+        return self._parent
 
     def release(self):
         if self.handle is not None:

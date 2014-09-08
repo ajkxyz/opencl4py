@@ -555,6 +555,54 @@ class Test(unittest.TestCase):
         diff = numpy.fabs(d - t).max()
         self.assertEqual(diff, 0)
 
+    def test_create_sub_buffer(self):
+        import numpy
+        # Create platform, context, program, kernel and queue
+        platforms = cl.Platforms()
+        ctx = platforms.create_some_context()
+        prg = ctx.create_program(self.src_test, self.include_dirs)
+        krn = prg.get_kernel("test")
+        queue = ctx.create_queue(ctx.devices[0])
+
+        # Create arrays with some values for testing
+        a = numpy.arange(100000, dtype=numpy.float32)
+        b = numpy.cos(a)
+        a = numpy.sin(a)
+
+        # Prepare arrays for use with map_buffer
+        a = cl.realign_array(a, queue.device.memalign, numpy)
+        b = cl.realign_array(b, queue.device.memalign, numpy)
+        c = numpy.array([1.2345], dtype=numpy.float32)
+        d = a[1024:1024 + 4096] + b[2048:2048 + 4096] * c[0]
+
+        # Create buffers
+        a_ = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_USE_HOST_PTR,
+                               a).create_sub_buffer(4096, 16384)
+        b_ = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_USE_HOST_PTR,
+                               b).create_sub_buffer(8192, 16384)
+
+        # Set kernel arguments
+        krn.set_args(a_, b_, c[0:1])
+
+        # Execute kernel
+        global_size = [4096]
+        local_size = None
+        queue.execute_kernel(krn, global_size, local_size, need_event=False)
+
+        # Get results back from the device by map_buffer
+        ev, ptr = queue.map_buffer(a_, cl.CL_MAP_READ, a_.size)
+        del ev
+        ev = queue.unmap_buffer(a_, ptr)
+        ev.wait()
+        self.assertLess(numpy.fabs(a[1024:1024 + 4096] - d).max(), 0.0001,
+                        "Incorrect result after map_buffer")
+
+        # Get results back from the device by read_buffer
+        aa = numpy.zeros(4096, dtype=numpy.float32)
+        queue.read_buffer(a_, aa)
+        self.assertLess(numpy.fabs(aa - d).max(), 0.0001,
+                        "Incorrect result after read_buffer")
+
 
 if __name__ == "__main__":
     unittest.main()

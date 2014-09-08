@@ -157,6 +157,7 @@ CL_KERNEL_REFERENCE_COUNT = 0x1192
 CL_KERNEL_CONTEXT = 0x1193
 CL_KERNEL_PROGRAM = 0x1194
 CL_KERNEL_ATTRIBUTES = 0x1195
+CL_BUFFER_CREATE_TYPE_REGION = 0x1220
 
 
 #: ffi parser
@@ -201,6 +202,7 @@ def initialize(backends=("libOpenCL.so", "OpenCL.dll")):
     typedef uint32_t cl_bool;
     typedef uint64_t cl_map_flags;
     typedef uint32_t cl_profiling_info;
+    typedef uint32_t cl_buffer_create_type;
 
     typedef void* cl_platform_id;
     typedef void* cl_device_id;
@@ -308,6 +310,11 @@ def initialize(backends=("libOpenCL.so", "OpenCL.dll")):
                           size_t size,
                           void *host_ptr,
                           cl_int *errcode_ret);
+    cl_mem clCreateSubBuffer(cl_mem buffer,
+                             cl_mem_flags flags,
+                             cl_buffer_create_type buffer_create_type,
+                             const void *buffer_create_info,
+                             cl_int *errcode_ret);
     cl_int clReleaseMemObject(cl_mem memobj);
     void* clEnqueueMapBuffer(cl_command_queue command_queue,
                              cl_mem buffer,

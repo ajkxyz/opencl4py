@@ -15,6 +15,7 @@ clCreateKernel
 clCreateKernel
 clCreateProgramWithSource
 clCreateProgramWithBinary
+clCreateSubBuffer
 clEnqueueCopyBuffer
 clEnqueueCopyBufferRect
 clEnqueueMapBuffer
