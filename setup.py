@@ -36,19 +36,23 @@ Original author: Alexey Kazantsev <a.kazantsev@samsung.com>
 """
 Setup script.
 """
-from distutils.core import setup
+try:
+    from setuptools import setup
+except ImportError:
+    from distutils.core import setup
 
 
 setup(
     name="opencl4py",
     description="OpenCL cffi bindings and helper classes",
-    version="1.2.7",
+    version="1.2.8",
     license="Simplified BSD",
     author="Samsung Electronics Co.,Ltd.",
     author_email="a.kazantsev@samsung.com",
     url="https://github.com/Samsung/opencl4py",
     download_url="https://github.com/Samsung/opencl4py",
     packages=["opencl4py"],
+    install_requires=["cffi"],
     package_dir={"opencl4py": "src/opencl4py"},
     keywords=["OpenCL", "opencl4py"],
     classifiers=[
