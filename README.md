@@ -10,6 +10,7 @@ Covered OpenCL API:
 clBuildProgram
 clCreateBuffer
 clCreateCommandQueue
+clCreateCommandQueueWithProperties
 clCreateContext
 clCreateKernel
 clCreateKernel

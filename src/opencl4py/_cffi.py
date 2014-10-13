@@ -128,6 +128,10 @@ CL_DEVICE_IMAGE_PITCH_ALIGNMENT = 0x104A
 CL_DEVICE_IMAGE_BASE_ADDRESS_ALIGNMENT = 0x104B
 CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE = 1
 CL_QUEUE_PROFILING_ENABLE = 2
+CL_QUEUE_ON_DEVICE = 4
+CL_QUEUE_ON_DEVICE_DEFAULT = 8
+CL_QUEUE_PROPERTIES = 0x1093
+CL_QUEUE_SIZE = 0x1094
 CL_PROGRAM_BUILD_LOG = 0x1183
 CL_MAP_READ = 1
 CL_MAP_WRITE = 2
@@ -198,6 +202,7 @@ def initialize(backends=("libOpenCL.so", "OpenCL.dll")):
     typedef cl_uint  cl_kernel_info;
     typedef uint32_t cl_kernel_work_group_info;
     typedef uint64_t cl_command_queue_properties;
+    typedef uint64_t cl_queue_properties;
     typedef uint64_t cl_mem_flags;
     typedef uint32_t cl_bool;
     typedef uint64_t cl_map_flags;
@@ -302,6 +307,11 @@ def initialize(backends=("libOpenCL.so", "OpenCL.dll")):
                                     cl_context context,
                                     cl_device_id device,
                                     cl_command_queue_properties properties,
+                                    cl_int *errcode_ret);
+    cl_command_queue clCreateCommandQueueWithProperties(
+                                    cl_context context,
+                                    cl_device_id device,
+                                    const cl_queue_properties *properties,
                                     cl_int *errcode_ret);
     cl_int clReleaseCommandQueue(cl_command_queue command_queue);
 

@@ -67,6 +67,11 @@ class Test(unittest.TestCase):
         self.assertEqual(cl.CL_DEVICE_TYPE_ACCELERATOR, 8)
         self.assertEqual(cl.CL_DEVICE_TYPE_CUSTOM, 16)
         self.assertEqual(cl.CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE, 1)
+        self.assertEqual(cl.CL_QUEUE_PROFILING_ENABLE, 2)
+        self.assertEqual(cl.CL_QUEUE_ON_DEVICE, 4)
+        self.assertEqual(cl.CL_QUEUE_ON_DEVICE_DEFAULT, 8)
+        self.assertEqual(cl.CL_QUEUE_PROPERTIES, 0x1093)
+        self.assertEqual(cl.CL_QUEUE_SIZE, 0x1094)
         self.assertEqual(cl.CL_MAP_READ, 1)
         self.assertEqual(cl.CL_MAP_WRITE, 2)
         self.assertEqual(cl.CL_MAP_WRITE_INVALIDATE_REGION, 4)
@@ -166,38 +171,41 @@ class Test(unittest.TestCase):
         binary = prg.binaries[0]
         prg = ctx.create_program([binary], binary=True)
         krn = prg.get_kernel("test")
+        del krn
 
-    def set_kernel_args(self):
+    def test_set_kernel_args(self):
+        import numpy
+
         platforms = cl.Platforms()
         ctx = platforms.create_some_context()
         prg = ctx.create_program(self.src_test, self.include_dirs)
         krn = prg.get_kernel("test")
         queue = ctx.create_queue(ctx.devices[0])
-        global_size = [a.size]
+        global_size = [12345]
         local_size = None
 
         krn.set_args(cl.skip(3))
-        self.assertRaises(CLRuntimeError,
-                          queue.execute_kernel(krn, global_size, local_size))
-        krn.set_args(cl.skip. cl.skip, cl.skip)
-        self.assertRaises(CLRuntimeError,
-                          queue.execute_kernel(krn, global_size, local_size))
-        krn.set_args(cl.skip(1). cl.skip(1), cl.skip(1))
-        self.assertRaises(CLRuntimeError,
-                          queue.execute_kernel(krn, global_size, local_size))
+        self.assertRaises(cl.CLRuntimeError,
+                          queue.execute_kernel, krn, global_size, local_size)
+        krn.set_args(cl.skip, cl.skip, cl.skip)
+        self.assertRaises(cl.CLRuntimeError,
+                          queue.execute_kernel, krn, global_size, local_size)
+        krn.set_args(cl.skip(1), cl.skip(1), cl.skip(1))
+        self.assertRaises(cl.CLRuntimeError,
+                          queue.execute_kernel, krn, global_size, local_size)
         krn.set_args(cl.skip(1000))
-        self.assertRaises(CLRuntimeError,
-                          queue.execute_kernel(krn, global_size, local_size))
+        self.assertRaises(cl.CLRuntimeError,
+                          queue.execute_kernel, krn, global_size, local_size)
         self.assertRaises(ValueError, cl.skip, 0)
         self.assertRaises(ValueError, cl.skip, -1)
 
         c = numpy.array([1.2345], dtype=numpy.float32)
         krn.set_args(cl.skip(2), c)
-        self.assertRaises(CLRuntimeError,
-                          queue.execute_kernel(krn, global_size, local_size))
+        self.assertRaises(cl.CLRuntimeError,
+                          queue.execute_kernel, krn, global_size, local_size)
         krn.set_args(cl.skip, cl.skip, c)
-        self.assertRaises(CLRuntimeError,
-                          queue.execute_kernel(krn, global_size, local_size))
+        self.assertRaises(cl.CLRuntimeError,
+                          queue.execute_kernel, krn, global_size, local_size)
 
     def test_api_numpy(self):
         import numpy
@@ -602,6 +610,21 @@ class Test(unittest.TestCase):
         queue.read_buffer(a_, aa)
         self.assertLess(numpy.fabs(aa - d).max(), 0.0001,
                         "Incorrect result after read_buffer")
+
+    def test_create_queue_with_properties(self):
+        ctx = cl.Platforms().create_some_context()
+        queue = ctx.create_queue(
+            ctx.devices[0],
+            cl.CL_QUEUE_ON_DEVICE | cl.CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE,
+            properties={cl.CL_QUEUE_SIZE: 64})
+        del queue
+        queue = ctx.create_queue(
+            ctx.devices[0],
+            properties={cl.CL_QUEUE_SIZE: 64,
+                        cl.CL_QUEUE_PROPERTIES:
+                        cl.CL_QUEUE_ON_DEVICE |
+                        cl.CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE})
+        del queue
 
 
 if __name__ == "__main__":

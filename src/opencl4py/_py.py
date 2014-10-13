@@ -256,18 +256,40 @@ class Queue(CL):
         context: context associated with this queue.
         device: device associated with this queue.
     """
-    def __init__(self, context, device, flags):
+    def __init__(self, context, device, flags, properties=None):
+        """Creates the OpenCL command queue associated with the given device.
+
+        Parameters:
+            context: Context instance.
+            device: Device instance.
+            flags: flags for the command queue creation.
+            properties: dictionary of the OpenCL 2.0 queue properties.
+        """
         super(Queue, self).__init__()
         self._context = context
         self._device = device
         err = cl.ffi.new("cl_int *")
-        self._handle = self._lib.clCreateCommandQueue(
-            context.handle, device.handle, flags, err)
+        if properties is None or device.version < 2.0:
+            fnme = "clCreateCommandQueue"
+            self._handle = self._lib.clCreateCommandQueue(
+                context.handle, device.handle, flags, err)
+        else:
+            fnme = "clCreateCommandQueueWithProperties"
+            if properties is None and flags == 0:
+                props = cl.NULL
+            else:
+                if cl.CL_QUEUE_PROPERTIES not in properties and flags != 0:
+                    properties[cl.CL_QUEUE_PROPERTIES] = flags
+                props = cl.ffi.new("uint64_t[]", len(properties) * 2 + 1)
+                for i, kv in enumerate(sorted(properties.items())):
+                    props[i * 2] = kv[0]
+                    props[i * 2 + 1] = kv[1]
+            self._handle = self._lib.clCreateCommandQueueWithProperties(
+                context.handle, device.handle, props, err)
         if err[0]:
             self._handle = None
-            raise CLRuntimeError("clCreateCommandQueue() failed with "
-                                 "error %s" %
-                                 CL.get_error_description(err[0]),
+            raise CLRuntimeError("%s() failed with error %s" %
+                                 (fnme, CL.get_error_description(err[0])),
                                  err[0])
 
     @property
@@ -1038,18 +1060,19 @@ class Context(CL):
         """
         return self._devices
 
-    def create_queue(self, device, flags=0):
+    def create_queue(self, device, flags=0, properties=None):
         """Creates Queue object for the supplied device.
 
         Parameters:
             device: Device object.
             flags: queue flags (for example
                                 CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE).
+            properties: dictionary of OpenCL 2.0 queue properties.
 
         Returns:
             Queue object.
         """
-        return Queue(self, device, flags)
+        return Queue(self, device, flags, properties)
 
     def create_buffer(self, flags, host_array=None, size=None):
         """Creates Buffer object based on host_array.
