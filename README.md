@@ -29,11 +29,12 @@ clFlush
 clGetDeviceIDs
 clGetDeviceInfo
 clGetEventProfilingInfo
+clGetKernelInfo
+clGetKernelWorkGroupInfo
 clGetPlatformIDs
 clGetPlatformInfo
 clGetProgramInfo
 clGetProgramBuildInfo
-clGetKernelInfo
 clReleaseCommandQueue
 clReleaseContext
 clReleaseEvent

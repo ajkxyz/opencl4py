@@ -673,6 +673,90 @@ class skip(object):
         self._number = value
 
 
+class WorkGroupInfo(CL):
+    """Some information about the kernel concerning the specified device.
+    """
+    def __init__(self, kernel, device):
+        super(WorkGroupInfo, self).__init__()
+        self._kernel = kernel
+        self._device = device
+
+    @property
+    def kernel(self):
+        return self._kernel
+
+    @property
+    def device(self):
+        return self._device
+
+    @property
+    def global_work_size(self):
+        """Returns the maximum global size that can be used to execute a kernel
+           on this device.
+
+        Raises:
+            CLRuntimeError: when device is not a custom device or
+                            kernel is not a built-in kernel.
+        """
+        buf = cl.ffi.new("size_t[]", 3)
+        self._get_info(cl.CL_KERNEL_GLOBAL_WORK_SIZE, buf)
+        return int(buf[0]), int(buf[1]), int(buf[2])
+
+    @property
+    def work_group_size(self):
+        """Returns the maximum global size that can be used to execute a kernel
+           on this device.
+        """
+        buf = cl.ffi.new("size_t *")
+        self._get_info(cl.CL_KERNEL_WORK_GROUP_SIZE, buf)
+        return int(buf[0])
+
+    @property
+    def compile_work_group_size(self):
+        """Returns the work-group size specified by the
+           __attribute__((reqd_work_group_size(X, Y, Z))) qualifier.
+        """
+        buf = cl.ffi.new("size_t[]", 3)
+        self._get_info(cl.CL_KERNEL_COMPILE_WORK_GROUP_SIZE, buf)
+        return int(buf[0]), int(buf[1]), int(buf[2])
+
+    @property
+    def local_mem_size(self):
+        """Returns the amount of local memory in bytes being used by a kernel.
+        """
+        buf = cl.ffi.new("uint64_t *")
+        self._get_info(cl.CL_KERNEL_LOCAL_MEM_SIZE, buf)
+        return int(buf[0])
+
+    @property
+    def preferred_work_group_size_multiple(self):
+        """Returns the preferred multiple of workgroup size for launch.
+        """
+        buf = cl.ffi.new("size_t *")
+        self._get_info(cl.CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE, buf)
+        return int(buf[0])
+
+    @property
+    def private_mem_size(self):
+        """Returns the minimum amount of private memory, in bytes,
+           used by each workitem in the kernel.
+        """
+        buf = cl.ffi.new("uint64_t *")
+        self._get_info(cl.CL_KERNEL_PRIVATE_MEM_SIZE, buf)
+        return int(buf[0])
+
+    def _get_info(self, code, buf):
+        sz = cl.ffi.new("size_t *")
+        err = self._lib.clGetKernelWorkGroupInfo(
+            self.kernel.handle, self.device.handle, code,
+            cl.ffi.sizeof(buf), buf, sz)
+        if err:
+            raise CLRuntimeError(
+                "clGetKernelWorkGroupInfo() failed with error %s" %
+                CL.get_error_description(err), err)
+        return sz[0]
+
+
 class Kernel(CL):
     """Holds OpenCL kernel.
 
@@ -725,6 +809,9 @@ class Kernel(CL):
         buf = cl.ffi.new("char[]", 4096)
         self._get_kernel_info(cl.CL_KERNEL_ATTRIBUTES, buf)
         return cl.ffi.string(buf).decode("utf-8", "replace").strip()
+
+    def get_work_group_info(self, device):
+        return WorkGroupInfo(self, device)
 
     def set_arg(self, idx, vle, size=None):
         """Sets kernel argument.
@@ -788,8 +875,8 @@ class Kernel(CL):
 
     def _get_kernel_info(self, code, buf):
         sz = cl.ffi.new("size_t *")
-        err = self._lib.clGetKernelInfo(self.handle, code,
-                                        cl.ffi.sizeof(buf), buf, sz)
+        err = self._lib.clGetKernelInfo(
+            self.handle, code, cl.ffi.sizeof(buf), buf, sz)
         if err:
             raise CLRuntimeError("clGetKernelInfo() failed with error %s" %
                                  CL.get_error_description(err), err)

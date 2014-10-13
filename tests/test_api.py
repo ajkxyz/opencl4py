@@ -626,6 +626,27 @@ class Test(unittest.TestCase):
                         cl.CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE})
         del queue
 
+    def test_work_group_info(self):
+        ctx = cl.Platforms().create_some_context()
+        prg = ctx.create_program(self.src_test, self.include_dirs)
+        krn = prg.get_kernel("test")
+        info = krn.get_work_group_info(ctx.devices[0])
+
+        self.assertRaises(cl.CLRuntimeError, getattr, info, "global_work_size")
+
+        for vle in (info.compile_work_group_size,):
+            self.assertIsInstance(vle, tuple)
+            self.assertEqual(len(vle), 3)
+            for x in vle:
+                self.assertIsInstance(x, int)
+                self.assertGreaterEqual(x, 0)
+
+        for vle in (info.work_group_size, info.local_mem_size,
+                    info.preferred_work_group_size_multiple,
+                    info.private_mem_size):
+            self.assertIsInstance(vle, int)
+            self.assertGreaterEqual(vle, 0)
+
 
 if __name__ == "__main__":
     unittest.main()
