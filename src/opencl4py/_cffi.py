@@ -142,6 +142,7 @@ CL_MEM_READ_ONLY = 4
 CL_MEM_USE_HOST_PTR = 8
 CL_MEM_ALLOC_HOST_PTR = 16
 CL_MEM_COPY_HOST_PTR = 32
+CL_MEM_HOST_NO_ACCESS = 512
 CL_PROFILING_COMMAND_QUEUED = 0x1280
 CL_PROFILING_COMMAND_SUBMIT = 0x1281
 CL_PROFILING_COMMAND_START = 0x1282
@@ -225,6 +226,7 @@ def initialize(backends=("libOpenCL.so", "OpenCL.dll")):
     typedef void* cl_event;
 
     typedef intptr_t cl_context_properties;
+    typedef intptr_t cl_pipe_properties;
 
     cl_int clGetPlatformIDs(cl_uint num_entries,
                             cl_platform_id *platforms,
@@ -411,6 +413,13 @@ def initialize(backends=("libOpenCL.so", "OpenCL.dll")):
                                    size_t param_value_size,
                                    void *param_value,
                                    size_t *param_value_size_ret);
+
+    cl_mem clCreatePipe(cl_context context,
+                        cl_mem_flags flags,
+                        cl_uint pipe_packet_size,
+                        cl_uint pipe_max_packets,
+                        const cl_pipe_properties *properties,
+                        cl_int *errcode_ret);
     """
 
     # Parse

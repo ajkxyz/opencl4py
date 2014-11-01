@@ -647,6 +647,24 @@ class Test(unittest.TestCase):
             self.assertIsInstance(vle, int)
             self.assertGreaterEqual(vle, 0)
 
+    def test_create_pipe(self):
+        ctx = cl.Platforms().create_some_context()
+        pipe = ctx.create_pipe(0, 8, 16)
+        del pipe
+        pipe = ctx.create_pipe(cl.CL_MEM_READ_WRITE,
+                               8, 16)
+        prg = ctx.create_program("""
+            __kernel void test(__write_only pipe int p) {
+                int x = 0;
+                write_pipe(p, &x);
+            }
+            """, options="-cl-std=CL2.0")
+        krn = prg.get_kernel("test")
+        krn.set_arg(0, pipe)
+        del krn
+        del prg
+        del pipe
+
 
 if __name__ == "__main__":
     unittest.main()

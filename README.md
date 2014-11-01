@@ -14,6 +14,7 @@ clCreateCommandQueueWithProperties
 clCreateContext
 clCreateKernel
 clCreateKernel
+clCreatePipe
 clCreateProgramWithSource
 clCreateProgramWithBinary
 clCreateSubBuffer

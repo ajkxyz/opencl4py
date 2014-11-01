@@ -826,7 +826,7 @@ class Kernel(CL):
                  - may be cffi pointer also, in such case size should be set.
             size: size of the vle (may be None for buffers and scalars).
         """
-        if isinstance(vle, Buffer):
+        if isinstance(vle, Buffer) or isinstance(vle, Pipe):
             arg_value = cl.ffi.new("cl_mem[]", 1)
             arg_value[0] = vle.handle
             arg_size = cl.ffi.sizeof("cl_mem")
@@ -1105,6 +1105,58 @@ class Program(CL):
         self.release()
 
 
+class Pipe(CL):
+    """Holds OpenCL pipe.
+
+    Attributes:
+        context: Context object associated with this program.
+        flags: flags for a pipe;
+               as of OpenCL 2.0 only CL_MEM_READ_ONLY, CL_MEM_WRITE_ONLY,
+               CL_MEM_READ_WRITE, and CL_MEM_HOST_NO_ACCESS can be specified
+               when creating a pipe object (0 defaults to CL_MEM_READ_WRITE).
+        packet_size: size in bytes of a pipe packet (must be greater than 0).
+        max_packets: maximum number of packets the pipe can hold
+                     (must be greater than 0).
+    """
+    def __init__(self, context, flags, packet_size, max_packets):
+        super(Pipe, self).__init__()
+        self._context = context
+        self._flags = flags
+        self._packet_size = packet_size
+        self._max_packets = max_packets
+        err = cl.ffi.new("cl_int *")
+        self._handle = self._lib.clCreatePipe(
+            context.handle, flags, packet_size, max_packets, cl.NULL, err)
+        if err[0]:
+            self._handle = None
+            raise CLRuntimeError("clCreatePipe() failed with error %s" %
+                                 CL.get_error_description(err[0]), err[0])
+
+    @property
+    def context(self):
+        return self._context
+
+    @property
+    def flags(self):
+        return self._flags
+
+    @property
+    def packet_size(self):
+        return self._packet_size
+
+    @property
+    def max_packets(self):
+        return self._max_packets
+
+    def release(self):
+        if self.handle is not None:
+            self._lib.clReleaseMemObject(self.handle)
+            self._handle = None
+
+    def __del__(self):
+        self.release()
+
+
 class Context(CL):
     """Holds OpenCL context.
 
@@ -1189,6 +1241,9 @@ class Context(CL):
         """
         return Program(self, self.devices if devices is None else devices,
                        src, include_dirs, options, binary)
+
+    def create_pipe(self, flags, packet_size, max_packets):
+        return Pipe(self, flags, packet_size, max_packets)
 
     def release(self):
         if self.handle is not None:
