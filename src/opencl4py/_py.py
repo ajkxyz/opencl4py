@@ -1582,6 +1582,15 @@ class Device(CL):
             return None
         return list(value)
 
+    @property
+    def pipe_max_packet_size(self):
+        return self._get_device_info_int(cl.CL_DEVICE_PIPE_MAX_PACKET_SIZE)
+
+    @property
+    def pipe_max_active_reservations(self):
+        return self._get_device_info_int(
+            cl.CL_DEVICE_PIPE_MAX_ACTIVE_RESERVATIONS)
+
     def _get_device_info_bool(self, name):
         value = cl.ffi.new("cl_bool[]", 1)
         err = self._lib.clGetDeviceInfo(self._handle, name,

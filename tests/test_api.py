@@ -131,6 +131,13 @@ class Test(unittest.TestCase):
         self.assertGreater(dev.preferred_vector_width_int, 0)
         self.assertGreater(dev.max_work_group_size, 1)
         self.assertTrue(dev.available)
+        try:
+            self.assertTrue(type(dev.pipe_max_active_reservations) == int)
+            self.assertTrue(type(dev.pipe_max_packet_size) == int)
+        except cl.CLRuntimeError as e:
+            if dev.version >= 2.0:
+                raise
+            self.assertEqual(e.code, -30)
 
     def test_program_info(self):
         platforms = cl.Platforms()
@@ -613,11 +620,17 @@ class Test(unittest.TestCase):
 
     def test_create_queue_with_properties(self):
         ctx = cl.Platforms().create_some_context()
-        queue = ctx.create_queue(
-            ctx.devices[0],
-            cl.CL_QUEUE_ON_DEVICE | cl.CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE,
-            properties={cl.CL_QUEUE_SIZE: 64})
-        del queue
+        try:
+            queue = ctx.create_queue(
+                ctx.devices[0],
+                cl.CL_QUEUE_ON_DEVICE |
+                cl.CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE,
+                properties={cl.CL_QUEUE_SIZE: 64})
+            del queue
+        except cl.CLRuntimeError:
+            if ctx.devices[0].version >= 2.0:
+                raise
+            return
         queue = ctx.create_queue(
             ctx.devices[0],
             properties={cl.CL_QUEUE_SIZE: 64,
@@ -649,8 +662,14 @@ class Test(unittest.TestCase):
 
     def test_create_pipe(self):
         ctx = cl.Platforms().create_some_context()
-        pipe = ctx.create_pipe(0, 8, 16)
-        del pipe
+        try:
+            pipe = ctx.create_pipe(0, 8, 16)
+            del pipe
+        except cl.CLRuntimeError as e:
+            if ctx.devices[0].version >= 2.0:
+                raise
+            self.assertEqual(e.code, -30)
+            return
         pipe = ctx.create_pipe(cl.CL_MEM_READ_WRITE,
                                8, 16)
         prg = ctx.create_program("""
