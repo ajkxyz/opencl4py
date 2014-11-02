@@ -728,6 +728,10 @@ class Test(unittest.TestCase):
         queue.execute_kernel(krn, [1], None)
         queue.svm_map(svm, cl.CL_MAP_READ, 4)
         self.assertEqual(p[0], 3)
+        # always ensure that the last unmap had completed before
+        # the svm destructor
+        queue.svm_unmap(svm).wait()
+        del svm  # svm destructor here
 
 
 if __name__ == "__main__":
