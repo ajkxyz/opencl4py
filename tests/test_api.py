@@ -731,6 +731,15 @@ class Test(unittest.TestCase):
         # always ensure that the last unmap had completed before
         # the svm destructor
         queue.svm_unmap(svm).wait()
+        try:
+            import numpy
+            a = numpy.frombuffer(svm.buffer, dtype=numpy.int32)
+            queue.execute_kernel(krn, [1], None)
+            queue.svm_map(svm, cl.CL_MAP_READ, 4)
+            self.assertEqual(a[0], 4)
+            queue.svm_unmap(svm).wait()
+        except ImportError:
+            pass
         del svm  # svm destructor here
 
 

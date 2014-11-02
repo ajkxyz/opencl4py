@@ -1270,6 +1270,16 @@ class SVM(CL):
     def alignment(self):
         return self._alignment
 
+    @property
+    def buffer(self):
+        """Returns buffer object from this SVM pointer.
+
+        You can supply it to numpy.frombuffer() for example,
+        but be sure that destructor of an SVM object is called
+        after the last access to that numpy array.
+        """
+        return cl.ffi.buffer(self.handle, self.size)
+
     def release(self):
         if self.handle is not None and self.context.handle is not None:
             self._lib.clSVMFree(self.context.handle, self.handle)
