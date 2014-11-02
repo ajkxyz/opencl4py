@@ -1742,6 +1742,25 @@ class Device(CL):
         return self._get_device_info_int(
             cl.CL_DEVICE_PIPE_MAX_ACTIVE_RESERVATIONS)
 
+    @property
+    def svm_capabilities(self):
+        return self._get_device_info_int(cl.CL_DEVICE_SVM_CAPABILITIES)
+
+    @property
+    def preferred_platform_atomic_alignment(self):
+        return self._get_device_info_int(
+            cl.CL_DEVICE_PREFERRED_PLATFORM_ATOMIC_ALIGNMENT)
+
+    @property
+    def preferred_global_atomic_alignment(self):
+        return self._get_device_info_int(
+            cl.CL_DEVICE_PREFERRED_GLOBAL_ATOMIC_ALIGNMENT)
+
+    @property
+    def preferred_local_atomic_alignment(self):
+        return self._get_device_info_int(
+            cl.CL_DEVICE_PREFERRED_LOCAL_ATOMIC_ALIGNMENT)
+
     def _get_device_info_bool(self, name):
         value = cl.ffi.new("cl_bool[]", 1)
         err = self._lib.clGetDeviceInfo(self._handle, name,

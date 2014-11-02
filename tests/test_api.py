@@ -81,6 +81,17 @@ class Test(unittest.TestCase):
         self.assertEqual(cl.CL_MEM_USE_HOST_PTR, 8)
         self.assertEqual(cl.CL_MEM_ALLOC_HOST_PTR, 16)
         self.assertEqual(cl.CL_MEM_COPY_HOST_PTR, 32)
+        self.assertEqual(cl.CL_MEM_HOST_NO_ACCESS, 512)
+        self.assertEqual(cl.CL_MEM_SVM_FINE_GRAIN_BUFFER, 1024)
+        self.assertEqual(cl.CL_MEM_SVM_ATOMICS, 2048)
+        self.assertEqual(cl.CL_DEVICE_SVM_COARSE_GRAIN_BUFFER, 1)
+        self.assertEqual(cl.CL_DEVICE_SVM_FINE_GRAIN_BUFFER, 2)
+        self.assertEqual(cl.CL_DEVICE_SVM_FINE_GRAIN_SYSTEM, 4)
+        self.assertEqual(cl.CL_DEVICE_SVM_ATOMICS, 8)
+        self.assertEqual(cl.CL_PROFILING_COMMAND_QUEUED, 0x1280)
+        self.assertEqual(cl.CL_PROFILING_COMMAND_SUBMIT, 0x1281)
+        self.assertEqual(cl.CL_PROFILING_COMMAND_START, 0x1282)
+        self.assertEqual(cl.CL_PROFILING_COMMAND_END, 0x1283)
 
     def test_dump_devices(self):
         platforms = cl.Platforms()
@@ -134,6 +145,11 @@ class Test(unittest.TestCase):
         try:
             self.assertTrue(type(dev.pipe_max_active_reservations) == int)
             self.assertTrue(type(dev.pipe_max_packet_size) == int)
+            self.assertTrue(type(dev.svm_capabilities) == int)
+            self.assertTrue(
+                type(dev.preferred_platform_atomic_alignment) == int)
+            self.assertTrue(type(dev.preferred_global_atomic_alignment) == int)
+            self.assertTrue(type(dev.preferred_local_atomic_alignment) == int)
         except cl.CLRuntimeError as e:
             if dev.version >= 2.0:
                 raise
