@@ -23,6 +23,8 @@ clEnqueueCopyBufferRect
 clEnqueueMapBuffer
 clEnqueueNDRangeKernel
 clEnqueueReadBuffer
+clEnqueueSVMMap
+clEnqueueSVMUnmap
 clEnqueueUnmapMemObject
 clEnqueueWriteBuffer
 clFinish
@@ -44,6 +46,7 @@ clReleaseKernel
 clReleaseMemObject
 clReleaseProgram
 clSetKernelArg
+clSetKernelArgSVMPointer
 clSVMAlloc
 clSVMFree
 clWaitForEvents

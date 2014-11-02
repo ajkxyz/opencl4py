@@ -687,11 +687,31 @@ class Test(unittest.TestCase):
         ctx = cl.Platforms().create_some_context()
         try:
             svm = ctx.svm_alloc(cl.CL_MEM_READ_WRITE, 4096)
-            del svm
         except cl.CLRuntimeError:
             if ctx.devices[0].version >= 2.0:
                 raise
             return
+        svm.release()
+        self.assertIsNone(svm.handle)
+        del svm
+        svm = ctx.svm_alloc(cl.CL_MEM_READ_WRITE, 4096)
+        prg = ctx.create_program("""
+            __kernel void test(__global void *p) {
+                __global int *ptr = (__global int*)p;
+                *ptr += 1;
+            }
+            """, options="-cl-std=CL2.0")
+        krn = prg.get_kernel("test")
+        krn.set_arg(0, svm)
+        krn.set_arg_svm(0, svm)
+        queue = ctx.create_queue(ctx.devices[0])
+        queue.svm_map(svm, cl.CL_MAP_WRITE_INVALIDATE_REGION, 4)
+        p = cl.ffi.cast("int*", svm.handle)
+        p[0] = 2
+        queue.svm_unmap(svm)
+        queue.execute_kernel(krn, [1], None)
+        queue.svm_map(svm, cl.CL_MAP_READ, 4)
+        self.assertEqual(p[0], 3)
 
 
 if __name__ == "__main__":

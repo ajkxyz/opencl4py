@@ -361,6 +361,7 @@ class Queue(CL):
             buf: Buffer object.
             flags: mapping flags.
             size: mapping size.
+            blocking: if the call would block until completion.
             offset: mapping offset.
             wait_for: list of the Event objects to wait.
             need_event: return Event object or not.
@@ -530,6 +531,61 @@ class Queue(CL):
         if n:
             raise CLRuntimeError("clEnqueueCopyBufferRect() failed with "
                                  "error %s" % CL.get_error_description(n), n)
+        return Event(event[0]) if event != cl.NULL else None
+
+    def svm_map(self, svm_ptr, flags, size, blocking=True,
+                wait_for=None, need_event=False):
+        """Enqueues a command that will allow the host to update a region
+        of a SVM buffer.
+
+        Parameters:
+            svm_ptr: SVM object or numpy array or direct cffi pointer.
+            flags: mapping flags.
+            size: mapping size (may be None if svm_ptr is a numpy array).
+            blocking: if the call would block until completion.
+            wait_for: list of the Event objects to wait.
+            need_event: return Event object or not.
+
+        Returns:
+            Event object or None if need_event == False.
+        """
+        event = cl.ffi.new("cl_event[]", 1) if need_event else cl.NULL
+        wait_list, n_events = CL.get_wait_list(wait_for)
+        if isinstance(svm_ptr, SVM):
+            ptr = svm_ptr.handle
+        else:
+            ptr, size = CL.extract_ptr_and_size(svm_ptr, size)
+        err = self._lib.clEnqueueSVMMap(
+            self.handle, blocking, flags, ptr, size,
+            n_events, wait_list, event)
+        if err:
+            raise CLRuntimeError("clEnqueueSVMMap() failed with error %s" %
+                                 CL.get_error_description(err), err)
+        return None if event == cl.NULL else Event(event[0])
+
+    def svm_unmap(self, svm_ptr, wait_for=None, need_event=True):
+        """Unmaps previously mapped SVM buffer.
+
+        Parameters:
+            svm_ptr: pointer that was specified in a previous call to svm_map.
+            wait_for: list of the Event objects to wait.
+            need_event: return Event object or not.
+
+        Returns:
+            Event object or None if need_event == False.
+        """
+        event = cl.ffi.new("cl_event[]", 1) if need_event else cl.NULL
+        wait_list, n_events = CL.get_wait_list(wait_for)
+        if isinstance(svm_ptr, SVM):
+            ptr = svm_ptr.handle
+        else:
+            ptr, _size = CL.extract_ptr_and_size(svm_ptr, 0)
+        err = self._lib.clEnqueueSVMUnmap(
+            self.handle, ptr, n_events, wait_list, event)
+        if err:
+            raise CLRuntimeError(
+                "clEnqueueSVMUnmap() failed with error %s" %
+                CL.get_error_description(err), err)
         return Event(event[0]) if event != cl.NULL else None
 
     def flush(self):
@@ -842,8 +898,10 @@ class Kernel(CL):
             if size is None:
                 raise ValueError("size should be set in case of cffi pointer")
             arg_size = size
+        elif isinstance(vle, SVM):
+            return self.set_arg_svm(idx, vle)
         else:
-            raise ValueError("vle should be of type Buffer, "
+            raise ValueError("vle should be of type Buffer, Pipe, SVM, "
                              "numpy array, cffi pointer or None "
                              "in Kernel::set_arg()")
         n = self._lib.clSetKernelArg(self.handle, idx, arg_size, arg_value)
@@ -852,6 +910,23 @@ class Kernel(CL):
                                  "%s" % (idx, repr(vle),
                                          CL.get_error_description(n)),
                                  n)
+
+    def set_arg_svm(self, idx, svm_ptr):
+        """Sets SVM pointer as the kernel argument.
+
+        Parameters:
+            idx: index of the kernel argument (zero-based).
+            svm_ptr: SVM object or numpy array or direct cffi pointer.
+        """
+        if isinstance(svm_ptr, SVM):
+            ptr = svm_ptr.handle
+        else:
+            ptr, _size = CL.extract_ptr_and_size(svm_ptr, 0)
+        err = self._lib.clSetKernelArgSVMPointer(self.handle, idx, ptr)
+        if err:
+            raise CLRuntimeError(
+                "clSetKernelArgSVMPointer(%d, %s) failed with error %s" %
+                (idx, repr(svm_ptr), CL.get_error_description(err)), err)
 
     def set_args(self, *args):
         i = 0
@@ -1196,7 +1271,7 @@ class SVM(CL):
         return self._alignment
 
     def release(self):
-        if self.handle is not None:
+        if self.handle is not None and self.context.handle is not None:
             self._lib.clSVMFree(self.context.handle, self.handle)
             self._handle = None
 
