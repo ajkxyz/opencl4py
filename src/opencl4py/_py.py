@@ -1109,7 +1109,7 @@ class Pipe(CL):
     """Holds OpenCL pipe.
 
     Attributes:
-        context: Context object associated with this program.
+        context: Context object associated with this pipe.
         flags: flags for a pipe;
                as of OpenCL 2.0 only CL_MEM_READ_ONLY, CL_MEM_WRITE_ONLY,
                CL_MEM_READ_WRITE, and CL_MEM_HOST_NO_ACCESS can be specified
@@ -1151,6 +1151,53 @@ class Pipe(CL):
     def release(self):
         if self.handle is not None:
             self._lib.clReleaseMemObject(self.handle)
+            self._handle = None
+
+    def __del__(self):
+        self.release()
+
+
+class SVM(CL):
+    """Holds shared virtual memory (SVM) buffer.
+
+    Attributes:
+        handle: pointer to the created buffer.
+        context: Context object associated with this buffer.
+        flags: flags for a buffer.
+        size: size in bytes of the SVM buffer to be allocated.
+        alignment: the minimum alignment in bytes (can be 0).
+    """
+    def __init__(self, context, flags, size, alignment=0):
+        super(SVM, self).__init__()
+        self._context = context
+        self._flags = flags
+        self._size = size
+        self._alignment = alignment
+        self._handle = self._lib.clSVMAlloc(
+            context.handle, flags, size, alignment)
+        if self._handle == cl.NULL:
+            self._handle = None
+            raise CLRuntimeError("clSVMAlloc() failed", -30)
+
+    @property
+    def context(self):
+        return self._context
+
+    @property
+    def flags(self):
+        return self._flags
+
+    @property
+    def size(self):
+        return self._size
+
+    @property
+    def alignment(self):
+        return self._alignment
+
+    def release(self):
+        if self.handle is not None:
+            self._lib.clSVMFree(self.context.handle, self.handle)
             self._handle = None
 
     def __del__(self):
@@ -1243,7 +1290,36 @@ class Context(CL):
                        src, include_dirs, options, binary)
 
     def create_pipe(self, flags, packet_size, max_packets):
+        """Creates OpenCL 2.0 pipe.
+
+        Parameters:
+            flags: flags for a pipe;
+                   as of OpenCL 2.0 only CL_MEM_READ_ONLY, CL_MEM_WRITE_ONLY,
+                   CL_MEM_READ_WRITE, and CL_MEM_HOST_NO_ACCESS
+                   can be specified when creating a pipe object
+                   (0 defaults to CL_MEM_READ_WRITE).
+            packet_size: size in bytes of a pipe packet
+                         (must be greater than 0).
+            max_packets: maximum number of packets the pipe can hold
+                         (must be greater than 0).
+        """
         return Pipe(self, flags, packet_size, max_packets)
+
+    def svm_alloc(self, flags, size, alignment=0):
+        """Allocates shared virtual memory (SVM) buffer.
+
+        Parameters:
+            flags: flags for a buffer;
+                   (CL_MEM_READ_WRITE, CL_MEM_WRITE_ONLY,
+                    CL_MEM_READ_ONLY, CL_MEM_SVM_FINE_GRAIN_BUFFER,
+                    CL_MEM_SVM_ATOMICS).
+            size: size in bytes of the SVM buffer to be allocated.
+            alignment: the minimum alignment in bytes,
+                       it must be a power of two up to the largest
+                       data type supported by the OpenCL device,
+                       0 defaults to the largest supported alignment.
+        """
+        return SVM(self, flags, size, alignment)
 
     def release(self):
         if self.handle is not None:

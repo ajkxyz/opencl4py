@@ -44,6 +44,8 @@ clReleaseKernel
 clReleaseMemObject
 clReleaseProgram
 clSetKernelArg
+clSVMAlloc
+clSVMFree
 clWaitForEvents
 ```
 

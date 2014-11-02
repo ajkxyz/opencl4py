@@ -665,10 +665,9 @@ class Test(unittest.TestCase):
         try:
             pipe = ctx.create_pipe(0, 8, 16)
             del pipe
-        except cl.CLRuntimeError as e:
+        except cl.CLRuntimeError:
             if ctx.devices[0].version >= 2.0:
                 raise
-            self.assertEqual(e.code, -30)
             return
         pipe = ctx.create_pipe(cl.CL_MEM_READ_WRITE,
                                8, 16)
@@ -683,6 +682,16 @@ class Test(unittest.TestCase):
         del krn
         del prg
         del pipe
+
+    def test_svm_alloc(self):
+        ctx = cl.Platforms().create_some_context()
+        try:
+            svm = ctx.svm_alloc(cl.CL_MEM_READ_WRITE, 4096)
+            del svm
+        except cl.CLRuntimeError:
+            if ctx.devices[0].version >= 2.0:
+                raise
+            return
 
 
 if __name__ == "__main__":

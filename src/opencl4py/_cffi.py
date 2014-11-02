@@ -145,6 +145,8 @@ CL_MEM_USE_HOST_PTR = 8
 CL_MEM_ALLOC_HOST_PTR = 16
 CL_MEM_COPY_HOST_PTR = 32
 CL_MEM_HOST_NO_ACCESS = 512
+CL_MEM_SVM_FINE_GRAIN_BUFFER = 1024
+CL_MEM_SVM_ATOMICS = 2048
 CL_PROFILING_COMMAND_QUEUED = 0x1280
 CL_PROFILING_COMMAND_SUBMIT = 0x1281
 CL_PROFILING_COMMAND_START = 0x1282
@@ -217,6 +219,7 @@ def initialize(backends=("libOpenCL.so", "OpenCL.dll")):
     typedef uint64_t cl_map_flags;
     typedef uint32_t cl_profiling_info;
     typedef uint32_t cl_buffer_create_type;
+    typedef uint64_t cl_svm_mem_flags;
 
     typedef void* cl_platform_id;
     typedef void* cl_device_id;
@@ -422,6 +425,29 @@ def initialize(backends=("libOpenCL.so", "OpenCL.dll")):
                         cl_uint pipe_max_packets,
                         const cl_pipe_properties *properties,
                         cl_int *errcode_ret);
+
+    void *clSVMAlloc(cl_context context,
+                     cl_svm_mem_flags flags,
+                     size_t size,
+                     unsigned int alignment);
+    void clSVMFree(cl_context context,
+                   void *svm_pointer);
+    cl_int clEnqueueSVMMap(cl_command_queue command_queue,
+                           cl_bool blocking_map,
+                           cl_map_flags map_flags,
+                           void *svm_ptr,
+                           size_t size,
+                           cl_uint num_events_in_wait_list,
+                           const cl_event *event_wait_list,
+                           cl_event *event);
+    cl_int clEnqueueSVMUnmap(cl_command_queue command_queue,
+                             void *svm_ptr,
+                             cl_uint  num_events_in_wait_list,
+                             const cl_event *event_wait_list,
+                             cl_event *event);
+    cl_int clSetKernelArgSVMPointer(cl_kernel kernel,
+                                    cl_uint arg_index,
+                                    const void *arg_value);
     """
 
     # Parse
