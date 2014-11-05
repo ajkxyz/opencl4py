@@ -678,15 +678,11 @@ class Test(unittest.TestCase):
 
     def test_create_pipe(self):
         ctx = cl.Platforms().create_some_context()
-        try:
-            pipe = ctx.create_pipe(0, 8, 16)
-            del pipe
-        except cl.CLRuntimeError:
-            if ctx.devices[0].version >= 2.0:
-                raise
+        if ctx.devices[0].version < 2.0:
             return
-        pipe = ctx.create_pipe(cl.CL_MEM_READ_WRITE,
-                               8, 16)
+        pipe = ctx.create_pipe(0, 8, 16)
+        del pipe
+        pipe = ctx.create_pipe(cl.CL_MEM_READ_WRITE, 8, 16)
         prg = ctx.create_program("""
             __kernel void test(__write_only pipe int p) {
                 int x = 0;
@@ -701,12 +697,9 @@ class Test(unittest.TestCase):
 
     def test_svm_alloc(self):
         ctx = cl.Platforms().create_some_context()
-        try:
-            svm = ctx.svm_alloc(cl.CL_MEM_READ_WRITE, 4096)
-        except cl.CLRuntimeError:
-            if ctx.devices[0].version >= 2.0:
-                raise
+        if ctx.devices[0].version < 2.0:
             return
+        svm = ctx.svm_alloc(cl.CL_MEM_READ_WRITE, 4096)
         svm.release()
         self.assertIsNone(svm.handle)
         del svm
