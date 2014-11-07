@@ -13,7 +13,6 @@ clCreateCommandQueue
 clCreateCommandQueueWithProperties
 clCreateContext
 clCreateKernel
-clCreateKernel
 clCreatePipe
 clCreateProgramWithSource
 clCreateProgramWithBinary
@@ -44,7 +43,6 @@ clGetProgramBuildInfo
 clReleaseCommandQueue
 clReleaseContext
 clReleaseEvent
-clReleaseKernel
 clReleaseKernel
 clReleaseMemObject
 clReleaseProgram
