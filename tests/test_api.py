@@ -799,6 +799,24 @@ class Test(unittest.TestCase):
             pass
         del svm  # svm destructor here
 
+    def test_svm_memcpy(self):
+        ctx = cl.Platforms().create_some_context()
+        if ctx.devices[0].version < 2.0:
+            return
+        svm = ctx.svm_alloc(cl.CL_MEM_READ_WRITE, 4096)
+        import numpy
+        a = numpy.frombuffer(svm.buffer, dtype=numpy.int32)
+        queue = ctx.create_queue(ctx.devices[0])
+        queue.svm_map(svm, cl.CL_MAP_WRITE_INVALIDATE_REGION, svm.size)
+        a[:] = numpy.arange(a.size, dtype=a.dtype)
+        queue.svm_unmap(svm)
+        n = a.size // 2
+        queue.svm_memcpy(a[n:], a, n * a.itemsize)
+        queue.svm_map(svm, cl.CL_MAP_READ, svm.size)
+        self.assertEqual(numpy.fabs(a[n:] - a[:n]).max(), 0)
+        queue.svm_unmap(svm).wait()
+        del svm
+
 
 if __name__ == "__main__":
     unittest.main()

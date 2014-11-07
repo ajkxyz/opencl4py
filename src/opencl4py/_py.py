@@ -595,6 +595,32 @@ class Queue(CL):
                 CL.get_error_description(err), err)
         return Event(event[0]) if event != cl.NULL else None
 
+    def svm_memcpy(self, dst, src, size, blocking=True,
+                   wait_for=None, need_event=False):
+        """Enqueues a command to do a memcpy operation.
+
+        Parameters:
+            dst: destination (numpy array or direct cffi pointer).
+            src: source (numpy array or direct cffi pointer).
+            size: number of bytes to copy.
+            blocking: if the call would block until completion.
+            wait_for: list of the Event objects to wait.
+            need_event: return Event object or not.
+
+        Returns:
+            Event object or None if need_event == False.
+        """
+        event = cl.ffi.new("cl_event[]", 1) if need_event else cl.NULL
+        wait_list, n_events = CL.get_wait_list(wait_for)
+        dst, _ = CL.extract_ptr_and_size(dst, 0)
+        src, _ = CL.extract_ptr_and_size(src, 0)
+        n = self._lib.clEnqueueSVMMemcpy(
+            self.handle, blocking, dst, src, size, n_events, wait_list, event)
+        if n:
+            raise CLRuntimeError("clEnqueueSVMMemcpy() failed with "
+                                 "error %s" % CL.get_error_description(n), n)
+        return Event(event[0]) if event != cl.NULL else None
+
     def flush(self):
         """Flushes the queue.
         """

@@ -521,6 +521,14 @@ def initialize(backends=("libOpenCL.so", "OpenCL.dll")):
     cl_int clSetKernelArgSVMPointer(cl_kernel kernel,
                                     cl_uint arg_index,
                                     const void *arg_value);
+    cl_int clEnqueueSVMMemcpy(cl_command_queue command_queue,
+                              cl_bool blocking_copy,
+                              void *dst_ptr,
+                              const void *src_ptr,
+                              size_t size,
+                              cl_uint num_events_in_wait_list,
+                              const cl_event *event_wait_list,
+                              cl_event *event);
     """
 
     # Parse
