@@ -621,6 +621,39 @@ class Queue(CL):
                                  "error %s" % CL.get_error_description(n), n)
         return Event(event[0]) if event != cl.NULL else None
 
+    def svm_memfill(self, svm_ptr, pattern, pattern_size, size,
+                    wait_for=None, need_event=True):
+        """Enqueues a command to fill a region in memory with a pattern
+        of a given pattern size.
+
+        Parameters:
+            svm_ptr: SVM object or numpy array or direct cffi pointer.
+            pattern: a pointer to the data pattern of size pattern_size
+                     in bytes (numpy array or direct cffi pointer).
+            pattern_size: pattern size in bytes.
+            size: the size in bytes of region being filled starting
+                  with svm_ptr and must be a multiple of pattern_size.
+            wait_for: list of the Event objects to wait.
+            need_event: return Event object or not.
+
+        Returns:
+            Event object or None if need_event == False.
+        """
+        event = cl.ffi.new("cl_event[]", 1) if need_event else cl.NULL
+        wait_list, n_events = CL.get_wait_list(wait_for)
+        if isinstance(svm_ptr, SVM):
+            ptr = svm_ptr.handle
+        else:
+            ptr, _ = CL.extract_ptr_and_size(svm_ptr, 0)
+        pattern, _ = CL.extract_ptr_and_size(pattern, 0)
+        n = self._lib.clEnqueueSVMMemFill(
+            self.handle, ptr, pattern, pattern_size, size,
+            n_events, wait_list, event)
+        if n:
+            raise CLRuntimeError("clEnqueueSVMMemFill() failed with "
+                                 "error %s" % CL.get_error_description(n), n)
+        return Event(event[0]) if event != cl.NULL else None
+
     def flush(self):
         """Flushes the queue.
         """

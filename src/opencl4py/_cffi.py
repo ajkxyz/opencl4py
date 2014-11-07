@@ -529,6 +529,14 @@ def initialize(backends=("libOpenCL.so", "OpenCL.dll")):
                               cl_uint num_events_in_wait_list,
                               const cl_event *event_wait_list,
                               cl_event *event);
+    cl_int clEnqueueSVMMemFill(cl_command_queue command_queue,
+                               void *svm_ptr,
+                               const void *pattern,
+                               size_t pattern_size,
+                               size_t size,
+                               cl_uint num_events_in_wait_list,
+                               const cl_event *event_wait_list,
+                               cl_event *event);
     """
 
     # Parse

@@ -25,6 +25,7 @@ clEnqueueNDRangeKernel
 clEnqueueReadBuffer
 clEnqueueSVMMap
 clEnqueueSVMMemcpy
+clEnqueueSVMMemFill
 clEnqueueSVMUnmap
 clEnqueueUnmapMemObject
 clEnqueueWriteBuffer

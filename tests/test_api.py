@@ -817,6 +817,24 @@ class Test(unittest.TestCase):
         queue.svm_unmap(svm).wait()
         del svm
 
+    def test_svm_memfill(self):
+        ctx = cl.Platforms().create_some_context()
+        if ctx.devices[0].version < 2.0:
+            return
+        svm = ctx.svm_alloc(cl.CL_MEM_READ_WRITE, 4096)
+        import numpy
+        a = numpy.frombuffer(svm.buffer, dtype=numpy.int32)
+        queue = ctx.create_queue(ctx.devices[0])
+        pattern = numpy.array([1, 2, 3, 4], dtype=numpy.int32)
+        queue.svm_memfill(a, pattern, pattern.nbytes, a.nbytes)
+        queue.svm_map(svm, cl.CL_MAP_READ, svm.size)
+        diff = 0
+        for i in range(0, a.size, pattern.size):
+            diff += numpy.fabs(a[i:i + pattern.size] - pattern).sum()
+        self.assertEqual(diff, 0)
+        queue.svm_unmap(svm).wait()
+        del svm
+
 
 if __name__ == "__main__":
     unittest.main()
