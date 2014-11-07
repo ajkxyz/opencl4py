@@ -540,6 +540,36 @@ class Queue(CL):
                                  "error %s" % CL.get_error_description(n), n)
         return Event(event[0]) if event != cl.NULL else None
 
+    def fill_buffer(self, buffer, pattern, pattern_size, size, offset=0,
+                    wait_for=None, need_event=True):
+        """Enqueues a command to copy from one buffer object to another.
+
+        Parameters:
+            buffer: Buffer object.
+            pattern: a pointer to the data pattern of size pattern_size
+                     in bytes, pattern will be used to fill a region in
+                     buffer starting at offset and is size bytes in size
+                     (numpy array or direct cffi pointer).
+            pattern_size: pattern size in bytes.
+            size: the size in bytes of region being filled in buffer
+                  and must be a multiple of pattern_size.
+            wait_for: list of the Event objects to wait.
+            need_event: return Event object or not.
+
+        Returns:
+            Event object or None if need_event == False.
+        """
+        event = cl.ffi.new("cl_event[]", 1) if need_event else cl.NULL
+        wait_list, n_events = CL.get_wait_list(wait_for)
+        pattern, _ = CL.extract_ptr_and_size(pattern, 0)
+        n = self._lib.clEnqueueFillBuffer(
+            self.handle, buffer.handle, pattern, pattern_size, offset, size,
+            n_events, wait_list, event)
+        if n:
+            raise CLRuntimeError("clEnqueueFillBuffer() failed with "
+                                 "error %s" % CL.get_error_description(n), n)
+        return Event(event[0]) if event != cl.NULL else None
+
     def svm_map(self, svm_ptr, flags, size, blocking=True,
                 wait_for=None, need_event=False):
         """Enqueues a command that will allow the host to update a region

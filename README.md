@@ -20,6 +20,7 @@ clCreateProgramWithBinary
 clCreateSubBuffer
 clEnqueueCopyBuffer
 clEnqueueCopyBufferRect
+clEnqueueFillBuffer
 clEnqueueMapBuffer
 clEnqueueNDRangeKernel
 clEnqueueReadBuffer

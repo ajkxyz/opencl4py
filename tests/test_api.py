@@ -592,6 +592,33 @@ class Test(unittest.TestCase):
         diff = numpy.fabs(c[8:28, 7:17, 6:11] - a[5:25, 4:14, 3:8]).max()
         self.assertEqual(diff, 0)
 
+    def test_fill_buffer(self):
+        # Create platform, context and queue
+        platforms = cl.Platforms()
+        ctx = platforms.create_some_context()
+        if ctx.devices[0].version < 1.2:
+            return
+        queue = ctx.create_queue(ctx.devices[0])
+
+        import numpy
+
+        # Create array
+        a = numpy.zeros(4096, dtype=numpy.int32)
+
+        # Create buffer
+        a_ = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,
+                               a)
+
+        # Fill the buffer
+        pattern = numpy.array([1, 2, 3, 4], dtype=numpy.int32)
+        queue.fill_buffer(a_, pattern, pattern.nbytes, a.nbytes).wait()
+
+        queue.read_buffer(a_, a)
+        diff = 0
+        for i in range(0, a.size, pattern.size):
+            diff += numpy.fabs(a[i:i + pattern.size] - pattern).sum()
+        self.assertEqual(diff, 0)
+
     def test_set_arg_None(self):
         import numpy
         # Create platform, context, program, kernel and queue
