@@ -37,7 +37,7 @@ Original author: Alexey Kazantsev <a.kazantsev@samsung.com>
 Init module for BLAS cffi bindings and helper classes.
 """
 
-from opencl4py.blas._clBlas import (CLBLAS,
+from opencl4py.blas._clblas import (CLBLAS,
 
                                     clblasRowMajor,
                                     clblasColumnMajor,
