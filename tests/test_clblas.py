@@ -48,7 +48,6 @@ import os
 
 class Test(unittest.TestCase):
     def setUp(self):
-        logging.basicConfig(level=logging.DEBUG)
         self.old_env = os.environ.get("PYOPENCL_CTX")
         if self.old_env is None:
             os.environ["PYOPENCL_CTX"] = "0:0"
@@ -86,8 +85,16 @@ class Test(unittest.TestCase):
         self.assertLess(max_diff, 0.0001)
 
     def test_sgemm(self):
+        logging.debug("ENTER: test_sgemm")
         self._test_gemm(self.blas.sgemm, numpy.float32)
+        logging.debug("EXIT: test_sgemm")
+
+    def test_dgemm(self):
+        logging.debug("ENTER: test_dgemm")
+        self._test_gemm(self.blas.dgemm, numpy.float64)
+        logging.debug("EXIT: test_dgemm")
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
     unittest.main()

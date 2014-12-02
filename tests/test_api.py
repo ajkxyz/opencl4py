@@ -44,7 +44,6 @@ import os
 
 class Test(unittest.TestCase):
     def setUp(self):
-        logging.basicConfig(level=logging.DEBUG)
         self.old_env = os.environ.get("PYOPENCL_CTX")
         if self.old_env is None:
             os.environ["PYOPENCL_CTX"] = "0:0"
@@ -864,4 +863,5 @@ class Test(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
     unittest.main()

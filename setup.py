@@ -45,7 +45,7 @@ except ImportError:
 setup(
     name="opencl4py",
     description="OpenCL cffi bindings and helper classes",
-    version="1.3.3",
+    version="1.3.4",
     license="Simplified BSD",
     author="Samsung Electronics Co.,Ltd.",
     author_email="a.kazantsev@samsung.com",
@@ -54,7 +54,7 @@ setup(
     packages=["opencl4py", "opencl4py.blas"],
     install_requires=["cffi"],
     package_dir={"opencl4py": "src/opencl4py"},
-    keywords=["OpenCL", "opencl4py"],
+    keywords=["OpenCL", "clBLAS", "opencl4py"],
     classifiers=[
         "Development Status :: 4 - Beta",
         "Environment :: Console",

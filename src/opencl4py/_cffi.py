@@ -264,14 +264,9 @@ NULL = ffi.NULL
 lock = threading.Lock()
 
 
-def initialize(backends=("libOpenCL.so", "OpenCL.dll")):
+def _initialize(backends):
     global lib
     if lib is not None:
-        return
-    global lock
-    lock.acquire()
-    if lib is not None:
-        lock.release()
         return
     # C function definitions
     src = """
@@ -560,6 +555,14 @@ def initialize(backends=("libOpenCL.so", "OpenCL.dll")):
         except OSError:
             pass
     else:
-        lock.release()
+        ffi = cffi.FFI()  # reset before raise
         raise OSError("Could not load OpenCL library")
-    lock.release()
+
+
+def initialize(backends=("libOpenCL.so", "OpenCL.dll")):
+    global lib
+    if lib is not None:
+        return
+    global lock
+    with lock:
+        _initialize(backends)
