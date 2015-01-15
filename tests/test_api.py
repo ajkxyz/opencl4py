@@ -177,6 +177,9 @@ class Test(unittest.TestCase):
         a = numpy.empty(1000, dtype=numpy.float32)
         a = cl.realign_array(a, 1056, numpy)
         self.assertEqual(a.__array_interface__["data"][0] % 1056, 0)
+        a = numpy.empty(1024, dtype=numpy.float32)
+        a = cl.realign_array(a, 4096, numpy)
+        self.assertEqual(a.__array_interface__["data"][0] % 4096, 0)
 
     def test_device_info(self):
         platforms = cl.Platforms()

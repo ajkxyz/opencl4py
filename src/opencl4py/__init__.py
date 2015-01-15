@@ -156,8 +156,7 @@ def realign_array(a, align, np):
     """
     if a.__array_interface__["data"][0] % align == 0 and eq_addr(a, a.ravel()):
         return a
-    b = np.empty(a.nbytes + (0 if a.nbytes % align == 0 else align),
-                 dtype=np.byte)
+    b = np.empty(a.nbytes + align, dtype=np.byte)
     addr = b.__array_interface__["data"][0]
     offs = 0
     if addr % align != 0:
