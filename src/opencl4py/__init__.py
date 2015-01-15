@@ -139,8 +139,14 @@ from opencl4py._cffi import (CL_DEVICE_TYPE_CPU,
                              CL_INVALID_DEVICE_QUEUE)
 
 
+def eq_addr(a, b):
+    """Compares addresses of the two numpy arrays.
+    """
+    return a.__array_interface__["data"][0] == b.__array_interface__["data"][0]
+
+
 def realign_array(a, align, np):
-    """Returns aligned copy of the numpy array
+    """Returns aligned copy of the numpy array with continuous memory layout.
     (useful for CL_MEM_USE_HOST_PTR buffers).
 
     Parameters:
@@ -148,9 +154,10 @@ def realign_array(a, align, np):
         align: alignment in bytes of the new array.
         np: reference to numpy module.
     """
-    if a.__array_interface__["data"][0] % align == 0:
+    if a.__array_interface__["data"][0] % align == 0 and eq_addr(a, a.ravel()):
         return a
-    b = np.empty(a.nbytes + align, dtype=np.byte)
+    b = np.empty(a.nbytes + (0 if a.nbytes % align == 0 else align),
+                 dtype=np.byte)
     addr = b.__array_interface__["data"][0]
     offs = 0
     if addr % align != 0:
@@ -158,7 +165,7 @@ def realign_array(a, align, np):
     b = b[offs:offs + a.nbytes].view(dtype=a.dtype)
     b.shape = a.shape
     if b.__array_interface__["data"][0] % align != 0:
-        raise ValueError("Could not realign numpy array with shape [%s]" %
-                         ", ".join(str(x) for x in a.shape))
+        raise ValueError("Could not realign numpy array with shape %s" %
+                         str(a.shape))
     b[:] = a[:]
     return b
