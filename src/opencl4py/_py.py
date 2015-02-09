@@ -1223,7 +1223,7 @@ class Program(CL):
                 "clBuildProgram() failed with error %s\n"
                 "Logs are:\n%s\nSource was:\n%s\n" %
                 (CL.get_error_description(err), "\n".join(self.build_logs),
-                 self.source),
+                 self.source.decode("utf-8")),
                 err)
 
     def _create_program_from_binary(self, src):
