@@ -273,6 +273,7 @@ class Queue(CL):
             properties: dictionary of the OpenCL 2.0 queue properties.
         """
         super(Queue, self).__init__()
+        context._add_ref(self)
         self._context = context
         self._device = device
         err = cl.ffi.new("cl_int *")
@@ -706,7 +707,10 @@ class Queue(CL):
             self._handle = None
 
     def __del__(self):
+        if self.context.handle is None:
+            raise SystemError("Incorrect destructor call order detected")
         self._release()
+        self.context._del_ref(self)
 
 
 class Buffer(CL):
@@ -728,6 +732,7 @@ class Buffer(CL):
     def __init__(self, context, flags, host_array, size=None,
                  parent=None, origin=0):
         super(Buffer, self).__init__()
+        context._add_ref(self)
         self._n_refs = 1
         self._parent = parent
         if parent is not None:
@@ -761,8 +766,10 @@ class Buffer(CL):
         self._n_refs += 1
 
     def _del_ref(self, obj):
-        self._n_refs -= 1
-        if self._n_refs <= 0:
+        with cl.lock:
+            self._n_refs -= 1
+            n_refs = self._n_refs
+        if n_refs <= 0:
             self._release()
 
     def create_sub_buffer(self, origin, size, flags=0):
@@ -820,9 +827,12 @@ class Buffer(CL):
             self._handle = None
 
     def __del__(self):
+        if self.context.handle is None:
+            raise SystemError("Incorrect destructor call order detected")
         if self.parent is not None:
             self.parent._del_ref(self)
         self._del_ref(self)
+        self.context._del_ref(self)
 
 
 class skip(object):
@@ -1093,6 +1103,7 @@ class Program(CL):
     def __init__(self, context, devices, src, include_dirs=(), options="",
                  binary=False):
         super(Program, self).__init__()
+        context._add_ref(self)
         self._context = context
         self._devices = devices
         self._src = src.encode("utf-8") if not binary else None
@@ -1293,7 +1304,10 @@ class Program(CL):
             self._handle = None
 
     def __del__(self):
+        if self.context.handle is None:
+            raise SystemError("Incorrect destructor call order detected")
         self._release()
+        self.context._del_ref(self)
 
 
 class Pipe(CL):
@@ -1311,6 +1325,7 @@ class Pipe(CL):
     """
     def __init__(self, context, flags, packet_size, max_packets):
         super(Pipe, self).__init__()
+        context._add_ref(self)
         self._context = context
         self._flags = flags
         self._packet_size = packet_size
@@ -1345,7 +1360,10 @@ class Pipe(CL):
             self._handle = None
 
     def __del__(self):
+        if self.context.handle is None:
+            raise SystemError("Incorrect destructor call order detected")
         self._release()
+        self.context._del_ref(self)
 
 
 class SVM(CL):
@@ -1360,6 +1378,7 @@ class SVM(CL):
     """
     def __init__(self, context, flags, size, alignment=0):
         super(SVM, self).__init__()
+        context._add_ref(self)
         self._context = context
         self._flags = flags
         self._size = size
@@ -1402,7 +1421,10 @@ class SVM(CL):
             self._handle = None
 
     def __del__(self):
+        if self.context.handle is None:
+            raise SystemError("Incorrect destructor call order detected")
         self._release()
+        self.context._del_ref(self)
 
 
 class Context(CL):
@@ -1411,9 +1433,14 @@ class Context(CL):
     Attributes:
         platform: Platform object associated with this context.
         devices: list of Device object associated with this context.
+        _n_refs: reference count as a workaround for possible
+                 incorrect destructor call order, see
+                 http://bugs.python.org/issue23720
+                 (weakrefs do not help here).
     """
     def __init__(self, platform, devices):
         super(Context, self).__init__()
+        self._n_refs = 1
         self._platform = platform
         self._devices = devices
         props = cl.ffi.new("cl_context_properties[]", 3)
@@ -1432,6 +1459,16 @@ class Context(CL):
             raise CLRuntimeError("clCreateContext() failed with error %s" %
                                  CL.get_error_description(err[0]),
                                  err[0])
+
+    def _add_ref(self, obj):
+        self._n_refs += 1
+
+    def _del_ref(self, obj):
+        with cl.lock:
+            self._n_refs -= 1
+            n_refs = self._n_refs
+        if n_refs <= 0:
+            self._release()
 
     @property
     def platform(self):
@@ -1528,7 +1565,7 @@ class Context(CL):
             self._handle = None
 
     def __del__(self):
-        self._release()
+        self._del_ref(self)
 
 
 class Device(CL):

@@ -66,7 +66,7 @@ class Test(unittest.TestCase):
         a = numpy.zeros([127, 353], dtype=dtype)
         b = numpy.zeros([135, a.shape[1]], dtype=dtype)
         c = numpy.zeros([a.shape[0], b.shape[0]], dtype=dtype)
-        numpy.random.seed(123)
+        numpy.random.seed(numpy.array([123], dtype=numpy.int32)[0])
         a[:] = numpy.random.rand(a.size).astype(dtype).reshape(a.shape)
         b[:] = numpy.random.rand(b.size).astype(dtype).reshape(b.shape)
         gold_c = numpy.dot(a, b.transpose())

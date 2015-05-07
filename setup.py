@@ -45,7 +45,7 @@ except ImportError:
 setup(
     name="opencl4py",
     description="OpenCL cffi bindings and helper classes",
-    version="1.4.0",
+    version="1.4.1",
     license="Simplified BSD",
     author="Samsung Electronics Co.,Ltd.",
     author_email="a.kazantsev@samsung.com",
