@@ -82,7 +82,8 @@ class Test(unittest.TestCase):
         queue.flush()
         queue.read_buffer(c_buf, c)
         max_diff = numpy.fabs(c - gold_c).max()
-        self.assertLess(max_diff, 0.0001)
+        self.assertLess(max_diff, 0.00001 if dtype == numpy.float64
+                        else 0.00015)
 
     def test_sgemm(self):
         logging.debug("ENTER: test_sgemm")

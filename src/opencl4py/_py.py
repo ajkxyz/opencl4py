@@ -247,13 +247,13 @@ class Event(CL):
                     "error %s" % CL.get_error_description(err), err)
         return (vles, errs)
 
-    def release(self):
+    def _release(self):
         if self.handle is not None:
             self._lib.clReleaseEvent(self.handle)
             self._handle = None
 
     def __del__(self):
-        self.release()
+        self._release()
 
 
 class Queue(CL):
@@ -700,13 +700,13 @@ class Queue(CL):
             raise CLRuntimeError("clFinish() failed with error %s" %
                                  CL.get_error_description(n), n)
 
-    def release(self):
+    def _release(self):
         if self.handle is not None:
             self._lib.clReleaseCommandQueue(self.handle)
             self._handle = None
 
     def __del__(self):
-        self.release()
+        self._release()
 
 
 class Buffer(CL):
@@ -720,17 +720,24 @@ class Buffer(CL):
         size: size of the host array.
         parent: parent buffer if this one should be created as sub buffer.
         origin: origin of the sub buffer if parent is not None.
+        _n_refs: reference count as a workaround for possible
+                 incorrect destructor call order, see
+                 http://bugs.python.org/issue23720
+                 (weakrefs do not help here).
     """
     def __init__(self, context, flags, host_array, size=None,
                  parent=None, origin=0):
         super(Buffer, self).__init__()
+        self._n_refs = 1
+        self._parent = parent
+        if parent is not None:
+            parent._add_ref(self)
         self._context = context
         self._flags = flags
         self._host_array = (host_array if flags & cl.CL_MEM_USE_HOST_PTR != 0
                             else None)
         host_ptr, size = CL.extract_ptr_and_size(host_array, size)
         self._size = size
-        self._parent = parent
         self._origin = origin
         err = cl.ffi.new("cl_int *")
         if parent is None:
@@ -749,6 +756,14 @@ class Buffer(CL):
                 "%s failed with error %s" %
                 ("clCreateBuffer()" if parent is None else "clCreateSubBuffer",
                  CL.get_error_description(err[0])), err[0])
+
+    def _add_ref(self, obj):
+        self._n_refs += 1
+
+    def _del_ref(self, obj):
+        self._n_refs -= 1
+        if self._n_refs <= 0:
+            self._release()
 
     def create_sub_buffer(self, origin, size, flags=0):
         """Creates subbufer from the region of the original buffer.
@@ -797,13 +812,17 @@ class Buffer(CL):
         """
         return self._parent
 
-    def release(self):
+    def _release(self):
         if self.handle is not None:
+            if self.parent is not None and self.parent.handle is None:
+                raise SystemError("Incorrect destructor call order detected")
             self._lib.clReleaseMemObject(self.handle)
             self._handle = None
 
     def __del__(self):
-        self.release()
+        if self.parent is not None:
+            self.parent._del_ref(self)
+        self._del_ref(self)
 
 
 class skip(object):
@@ -1039,7 +1058,7 @@ class Kernel(CL):
                 self.set_arg(i, arg)
             i += 1
 
-    def release(self):
+    def _release(self):
         if self.handle is not None:
             self._lib.clReleaseKernel(self.handle)
             self._handle = None
@@ -1054,7 +1073,7 @@ class Kernel(CL):
         return sz[0]
 
     def __del__(self):
-        self.release()
+        self._release()
 
 
 class Program(CL):
@@ -1268,13 +1287,13 @@ class Program(CL):
                                      "\n".join(self.build_logs)),
                                  err)
 
-    def release(self):
+    def _release(self):
         if self.handle is not None:
             self._lib.clReleaseProgram(self.handle)
             self._handle = None
 
     def __del__(self):
-        self.release()
+        self._release()
 
 
 class Pipe(CL):
@@ -1320,13 +1339,13 @@ class Pipe(CL):
     def max_packets(self):
         return self._max_packets
 
-    def release(self):
+    def _release(self):
         if self.handle is not None:
             self._lib.clReleaseMemObject(self.handle)
             self._handle = None
 
     def __del__(self):
-        self.release()
+        self._release()
 
 
 class SVM(CL):
@@ -1377,13 +1396,13 @@ class SVM(CL):
         """
         return cl.ffi.buffer(self.handle, self.size)
 
-    def release(self):
+    def _release(self):
         if self.handle is not None and self.context.handle is not None:
             self._lib.clSVMFree(self.context.handle, self.handle)
             self._handle = None
 
     def __del__(self):
-        self.release()
+        self._release()
 
 
 class Context(CL):
@@ -1503,13 +1522,13 @@ class Context(CL):
         """
         return SVM(self, flags, size, alignment)
 
-    def release(self):
+    def _release(self):
         if self.handle is not None:
             self._lib.clReleaseContext(self.handle)
             self._handle = None
 
     def __del__(self):
-        self.release()
+        self._release()
 
 
 class Device(CL):

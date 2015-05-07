@@ -334,8 +334,7 @@ class Test(unittest.TestCase):
         # Get results back from the device by map_buffer
         ev, ptr = queue.map_buffer(a_, cl.CL_MAP_READ, a.nbytes)
         del ev
-        ev = queue.unmap_buffer(a_, ptr)
-        ev.wait()
+        queue.unmap_buffer(a_, ptr).wait()
         self.assertLess(numpy.fabs(a - d).max(), 0.0001,
                         "Incorrect result after map_buffer")
 
@@ -360,8 +359,7 @@ class Test(unittest.TestCase):
         ev, ptr = queue.map_buffer(a_, cl.CL_MAP_READ, a.nbytes,
                                    wait_for=(ev,), need_event=True)
         ev.wait()
-        ev = queue.unmap_buffer(a_, ptr)
-        ev.wait()
+        queue.unmap_buffer(a_, ptr).wait()
         self.assertLess(numpy.fabs(a - d).max(), 0.0001,
                         "Incorrect result after map_buffer")
 
@@ -374,8 +372,7 @@ class Test(unittest.TestCase):
         ev, ptr = queue.map_buffer(a_, cl.CL_MAP_READ, a.nbytes,
                                    wait_for=(ev,), need_event=True)
         ev.wait()
-        ev = queue.unmap_buffer(a_, ptr)
-        ev.wait()
+        queue.unmap_buffer(a_, ptr).wait()
         self.assertLess(numpy.fabs(a - d).max(), 0.0001,
                         "Incorrect result after map_buffer")
 
@@ -435,8 +432,7 @@ class Test(unittest.TestCase):
         # Get results back from the device by map_buffer
         ev, ptr = queue.map_buffer(a_, cl.CL_MAP_READ, sz)
         del ev
-        ev = queue.unmap_buffer(a_, ptr)
-        ev.wait()
+        queue.unmap_buffer(a_, ptr).wait()
         mx = 0
         for i, t in enumerate(d):
             mx = max(mx, math.fabs(a[i] - t))
@@ -465,8 +461,7 @@ class Test(unittest.TestCase):
         ev, ptr = queue.map_buffer(a_, cl.CL_MAP_READ, sz,
                                    wait_for=(ev,), need_event=True)
         ev.wait()
-        ev = queue.unmap_buffer(a_, ptr)
-        ev.wait()
+        queue.unmap_buffer(a_, ptr).wait()
         mx = 0
         for i, t in enumerate(d):
             mx = max(mx, math.fabs(a[i] - t))
@@ -482,8 +477,7 @@ class Test(unittest.TestCase):
         ev, ptr = queue.map_buffer(a_, cl.CL_MAP_READ, sz,
                                    wait_for=(ev,), need_event=True)
         ev.wait()
-        ev = queue.unmap_buffer(a_, ptr)
-        ev.wait()
+        queue.unmap_buffer(a_, ptr).wait()
         mx = 0
         for i, t in enumerate(d):
             mx = max(mx, math.fabs(a[i] - t))
@@ -555,8 +549,7 @@ class Test(unittest.TestCase):
 
         # Copy some data from one buffer to another
         sz = a.itemsize
-        ev = queue.copy_buffer(a_, b_, 1000 * sz, 2000 * sz, 3000 * sz)
-        ev.wait()
+        queue.copy_buffer(a_, b_, 1000 * sz, 2000 * sz, 3000 * sz).wait()
 
         queue.read_buffer(b_, c)
         diff = numpy.fabs(c[2000:5000] - a[1000:4000]).max()
@@ -584,11 +577,10 @@ class Test(unittest.TestCase):
 
         # Copy 3D rect from one buffer to another
         sz = a.itemsize
-        ev = queue.copy_buffer_rect(
+        queue.copy_buffer_rect(
             a_, b_, (3 * sz, 4, 5), (6 * sz, 7, 8), (5 * sz, 10, 20),
             a.shape[2] * sz, a.shape[1] * a.shape[2] * sz,
-            b.shape[2] * sz, b.shape[1] * b.shape[2] * sz)
-        ev.wait()
+            b.shape[2] * sz, b.shape[1] * b.shape[2] * sz).wait()
 
         queue.read_buffer(b_, c)
         diff = numpy.fabs(c[8:28, 7:17, 6:11] - a[5:25, 4:14, 3:8]).max()
@@ -656,8 +648,7 @@ class Test(unittest.TestCase):
         krn.set_arg(2, c_)
 
         # Execute kernel
-        ev = queue.execute_kernel(krn, [a.size], None)
-        ev.wait()
+        queue.execute_kernel(krn, [a.size], None).wait()
 
         # Get results back
         d = numpy.zeros_like(a)
@@ -670,8 +661,7 @@ class Test(unittest.TestCase):
         krn.set_arg(2, None)
 
         # Execute kernel
-        ev = queue.execute_kernel(krn, [a.size], None)
-        ev.wait()
+        queue.execute_kernel(krn, [a.size], None).wait()
 
         # Get results back
         queue.read_buffer(a_, d)
@@ -700,10 +690,18 @@ class Test(unittest.TestCase):
         d = a[1024:1024 + 4096] + b[2048:2048 + 4096] * c[0]
 
         # Create buffers
-        a_ = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_USE_HOST_PTR,
-                               a).create_sub_buffer(4096, 16384)
-        b_ = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_USE_HOST_PTR,
-                               b).create_sub_buffer(8192, 16384)
+        a_parent_ = ctx.create_buffer(
+            cl.CL_MEM_READ_WRITE | cl.CL_MEM_USE_HOST_PTR, a)
+        self.assertEqual(a_parent_._n_refs, 1)
+        a_ = a_parent_.create_sub_buffer(4096, 16384)
+        self.assertEqual(a_parent_._n_refs, 2)
+        self.assertEqual(a_._n_refs, 1)
+        b_parent_ = ctx.create_buffer(
+            cl.CL_MEM_READ_WRITE | cl.CL_MEM_USE_HOST_PTR, b)
+        self.assertEqual(b_parent_._n_refs, 1)
+        b_ = b_parent_.create_sub_buffer(8192, 16384)
+        self.assertEqual(b_parent_._n_refs, 2)
+        self.assertEqual(b_._n_refs, 1)
 
         # Set kernel arguments
         krn.set_args(a_, b_, c[0:1])
@@ -716,8 +714,7 @@ class Test(unittest.TestCase):
         # Get results back from the device by map_buffer
         ev, ptr = queue.map_buffer(a_, cl.CL_MAP_READ, a_.size)
         del ev
-        ev = queue.unmap_buffer(a_, ptr)
-        ev.wait()
+        queue.unmap_buffer(a_, ptr).wait()
         self.assertLess(numpy.fabs(a[1024:1024 + 4096] - d).max(), 0.0001,
                         "Incorrect result after map_buffer")
 
@@ -726,6 +723,17 @@ class Test(unittest.TestCase):
         queue.read_buffer(a_, aa)
         self.assertLess(numpy.fabs(aa - d).max(), 0.0001,
                         "Incorrect result after read_buffer")
+
+        del b_
+        self.assertIn(b_parent_._n_refs, (1, 2))
+        logging.info("test_create_sub_buffer: "
+                     "b_parent_._n_refs = %d (expected 1 or 2)",
+                     b_parent_._n_refs)
+        del a_
+        self.assertIn(a_parent_._n_refs, (1, 2))
+        logging.info("test_create_sub_buffer: "
+                     "a_parent_._n_refs = %d (expected 1 or 2)",
+                     a_parent_._n_refs)
 
     def test_create_queue_with_properties(self):
         ctx = cl.Platforms().create_some_context()
