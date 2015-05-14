@@ -37,14 +37,11 @@ Original author: Alexey Kazantsev <a.kazantsev@samsung.com>
 Init module.
 """
 
-# High-level interface.
+from opencl4py import _cffi
 from opencl4py._py import Platforms, Context, CLRuntimeError, skip
+from opencl4py._cffi import (initialize,
 
-# Low-level interface.
-from opencl4py._cffi import ffi, lib, initialize
-
-# Constants.
-from opencl4py._cffi import (CL_DEVICE_TYPE_CPU,
+                             CL_DEVICE_TYPE_CPU,
                              CL_DEVICE_TYPE_GPU,
                              CL_DEVICE_TYPE_ACCELERATOR,
                              CL_DEVICE_TYPE_CUSTOM,
@@ -137,6 +134,12 @@ from opencl4py._cffi import (CL_DEVICE_TYPE_CPU,
                              CL_INVALID_DEVICE_PARTITION_COUNT,
                              CL_INVALID_PIPE_SIZE,
                              CL_INVALID_DEVICE_QUEUE)
+
+
+def get_ffi():
+    """Returns CFFI() instance for the loaded shared library.
+    """
+    return _cffi.ffi
 
 
 def eq_addr(a, b):

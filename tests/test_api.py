@@ -378,6 +378,7 @@ class Test(unittest.TestCase):
 
     def test_api_nonumpy(self):
         import math
+
         # Create platform, context, program, kernel and queue
         platforms = cl.Platforms()
         ctx = platforms.create_some_context()
@@ -388,29 +389,30 @@ class Test(unittest.TestCase):
 
         # Create arrays with some values for testing
         N = 100000
-        _a = cl.ffi.new("float[]", N + queue.device.memalign)
-        sz = int(cl.ffi.cast("size_t", _a))
+        ffi = cl.get_ffi()
+        _a = ffi.new("float[]", N + queue.device.memalign)
+        sz = int(ffi.cast("size_t", _a))
         if sz % queue.device.memalign != 0:
             sz += queue.device.memalign - (sz % queue.device.memalign)
-            a = cl.ffi.cast("float*", sz)
+            a = ffi.cast("float*", sz)
         else:
             a = _a
-        _b = cl.ffi.new("float[]", N + queue.device.memalign)
-        sz = int(cl.ffi.cast("size_t", _b))
+        _b = ffi.new("float[]", N + queue.device.memalign)
+        sz = int(ffi.cast("size_t", _b))
         if sz % queue.device.memalign != 0:
             sz += queue.device.memalign - (sz % queue.device.memalign)
-            b = cl.ffi.cast("float*", sz)
+            b = ffi.cast("float*", sz)
         else:
             b = _b
-        c = cl.ffi.new("float[]", 1)
+        c = ffi.new("float[]", 1)
         c[0] = 1.2345
-        d = cl.ffi.new("float[]", N)
-        sz = cl.ffi.sizeof(d)
+        d = ffi.new("float[]", N)
+        sz = ffi.sizeof(d)
         for i, t in enumerate(d):
             a[i] = math.sin(i)
             b[i] = math.cos(i)
             d[i] = a[i] + b[i] * c[0]
-        a_copy = cl.ffi.new("float[]", N)
+        a_copy = ffi.new("float[]", N)
         a_copy[0:N] = a[0:N]
 
         # Create buffers
@@ -422,7 +424,7 @@ class Test(unittest.TestCase):
         # Set kernel arguments
         krn.set_arg(0, a_)
         krn.set_arg(1, b_)
-        krn.set_arg(2, cl.ffi.cast("const void*", c), cl.ffi.sizeof(c))
+        krn.set_arg(2, ffi.cast("const void*", c), ffi.sizeof(c))
 
         # Execute kernel
         global_size = [N]
@@ -439,7 +441,7 @@ class Test(unittest.TestCase):
         self.assertLess(mx, 0.0001, "Incorrect result after map_buffer")
 
         # Get results back from the device by read_buffer
-        aa = cl.ffi.new("float[]", N)
+        aa = ffi.new("float[]", N)
         queue.read_buffer(a_, aa, size=sz)
         mx = 0
         for i, t in enumerate(d):
@@ -816,7 +818,7 @@ class Test(unittest.TestCase):
         krn.set_arg_svm(0, svm)
         queue = ctx.create_queue(ctx.devices[0])
         queue.svm_map(svm, cl.CL_MAP_WRITE_INVALIDATE_REGION, 4)
-        p = cl.ffi.cast("int*", svm.handle)
+        p = cl.get_ffi().cast("int*", svm.handle)
         p[0] = 2
         queue.svm_unmap(svm)
         queue.execute_kernel(krn, [1], None)

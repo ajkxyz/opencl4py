@@ -42,7 +42,7 @@ import cffi
 
 
 #: ffi parser
-ffi = cffi.FFI()
+ffi = None
 
 
 #: Loaded shared library
@@ -192,6 +192,7 @@ def _initialize(backends):
 
     # Parse
     global ffi
+    ffi = cffi.FFI()
     ffi.cdef(src)
 
     # Load library
@@ -202,7 +203,7 @@ def _initialize(backends):
         except OSError:
             pass
     else:
-        ffi = cffi.FFI()  # reset before raise
+        ffi = None
         raise OSError("Could not load clBlas library")
 
     global ERRORS
@@ -283,7 +284,7 @@ class CLBLAS(object):
         Returns:
             Event object or None if need_event == False.
         """
-        event = ffi.new("cl_event[]", 1) if need_event else clffi.NULL
+        event = ffi.new("cl_event[]", 1) if need_event else clffi.ffi.NULL
         wait_list, n_events = CL.get_wait_list(wait_for)
         _queues = ffi.new("cl_command_queue[]", len(queues))
         for i, q in enumerate(queues):
@@ -310,7 +311,7 @@ class CLBLAS(object):
         if err:
             raise CLRuntimeError("clblasSgemm() failed with error %s" %
                                  CL.get_error_description(err), err)
-        return Event(event[0]) if event != clffi.NULL else None
+        return Event(event[0]) if event != clffi.ffi.NULL else None
 
     def dgemm(self, queues, order, transA, transB,
               rowsCountA, columnCountB, commonSideLength,
@@ -365,7 +366,7 @@ class CLBLAS(object):
         Returns:
             Event object or None if need_event == False.
         """
-        event = ffi.new("cl_event[]", 1) if need_event else clffi.NULL
+        event = ffi.new("cl_event[]", 1) if need_event else clffi.ffi.NULL
         wait_list, n_events = CL.get_wait_list(wait_for)
         _queues = ffi.new("cl_command_queue[]", len(queues))
         for i, q in enumerate(queues):
@@ -392,7 +393,7 @@ class CLBLAS(object):
         if err:
             raise CLRuntimeError("clblasDgemm() failed with error %s" %
                                  CL.get_error_description(err), err)
-        return Event(event[0]) if event != clffi.NULL else None
+        return Event(event[0]) if event != clffi.ffi.NULL else None
 
     def __del__(self):
         if self._lib is not None:

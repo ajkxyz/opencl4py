@@ -249,15 +249,11 @@ CL_INVALID_DEVICE_QUEUE = -70
 
 
 #: ffi parser
-ffi = cffi.FFI()
+ffi = None
 
 
 #: Loaded shared library
 lib = None
-
-
-#: cffi NULL pointer
-NULL = ffi.NULL
 
 
 #: Lock
@@ -545,6 +541,7 @@ def _initialize(backends):
 
     # Parse
     global ffi
+    ffi = cffi.FFI()
     ffi.cdef(src)
 
     # Load library
@@ -555,7 +552,7 @@ def _initialize(backends):
         except OSError:
             pass
     else:
-        ffi = cffi.FFI()  # reset before raise
+        ffi = None
         raise OSError("Could not load OpenCL library")
 
 
