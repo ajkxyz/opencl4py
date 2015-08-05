@@ -55,7 +55,7 @@ clWaitForEvents
 
 To install the module run:
 ```bash
-python setup.py install
+pip install .
 ```
 or just copy src/opencl4py to any place where python
 interpreter will be able to find it.
