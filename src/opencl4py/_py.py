@@ -1085,6 +1085,9 @@ class Kernel(CL):
     def __del__(self):
         self._release()
 
+    def __repr__(self):
+        return '<opencl4py.Kernel %r>' % self.name
+
 
 class Program(CL):
     """Holds OpenCL program.
@@ -1951,6 +1954,9 @@ class Device(CL):
                                  (name, CL.get_error_description(err)), err)
         return cl.ffi.string(value).decode("utf-8")
 
+    def __repr__(self):
+        return '<opencl4py.Device %r>' % self.name
+
 
 class Platform(CL):
     """OpenCL platform.
@@ -2022,6 +2028,9 @@ class Platform(CL):
             Context object.
         """
         return Context(self, devices)
+
+    def __repr__(self):
+        return '<opencl4py.Platform %r>' % self.name
 
 
 class Platforms(CL):
