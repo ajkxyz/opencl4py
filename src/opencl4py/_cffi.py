@@ -556,7 +556,7 @@ def _initialize(backends):
         raise OSError("Could not load OpenCL library")
 
 
-def initialize(backends=("libOpenCL.so", "OpenCL.dll")):
+def initialize(backends=("libOpenCL.so", "OpenCL.dll", "OpenCL")):
     global lib
     if lib is not None:
         return
