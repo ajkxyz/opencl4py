@@ -5,53 +5,9 @@ Python cffi OpenCL bindings and helper classes.
 
 Tested with Python 2.7, Python 3.3, Python 3.4 and PyPy on Linux, MacOSX and Windows.
 
-Covered OpenCL API:
-```
-clBuildProgram
-clCreateBuffer
-clCreateCommandQueue
-clCreateCommandQueueWithProperties
-clCreateContext
-clCreateKernel
-clCreatePipe
-clCreateProgramWithSource
-clCreateProgramWithBinary
-clCreateSubBuffer
-clEnqueueCopyBuffer
-clEnqueueCopyBufferRect
-clEnqueueFillBuffer
-clEnqueueMapBuffer
-clEnqueueNDRangeKernel
-clEnqueueReadBuffer
-clEnqueueSVMMap
-clEnqueueSVMMemcpy
-clEnqueueSVMMemFill
-clEnqueueSVMUnmap
-clEnqueueUnmapMemObject
-clEnqueueWriteBuffer
-clFinish
-clFlush
-clGetDeviceIDs
-clGetDeviceInfo
-clGetEventProfilingInfo
-clGetKernelInfo
-clGetKernelWorkGroupInfo
-clGetPlatformIDs
-clGetPlatformInfo
-clGetProgramInfo
-clGetProgramBuildInfo
-clReleaseCommandQueue
-clReleaseContext
-clReleaseEvent
-clReleaseKernel
-clReleaseMemObject
-clReleaseProgram
-clSetKernelArg
-clSetKernelArgSVMPointer
-clSVMAlloc
-clSVMFree
-clWaitForEvents
-```
+To use clBLAS, libclBLAS.so (clBLAS.dll) should be present.
+
+Not all OpenCL api is currently covered.
 
 To install the module run:
 ```bash
@@ -74,11 +30,8 @@ PYTHONPATH=src nosetests3 -w tests
 
 for PyPy:
 ```bash
-PYTHONPATH=src pypy tests/test_api.py
+PYTHONPATH=src pypy -m nose -w tests
 ```
-
-Currently, PyPy numpy support may be incomplete,
-so tests which use numpy arrays may fail.
 
 Example usage:
 
@@ -114,10 +67,7 @@ if __name__ == "__main__":
                               b)
     c_buf = ctx.create_buffer(cl.CL_MEM_WRITE_ONLY | cl.CL_MEM_ALLOC_HOST_PTR,
                               size=c.nbytes)
-    krn.set_arg(0, a_buf)
-    krn.set_arg(1, b_buf)
-    krn.set_arg(2, c_buf)
-    krn.set_arg(3, k[0:1])
+    krn.set_args(a_buf, b_buf, c_buf, k[0:1])
     queue.execute_kernel(krn, [a.size], None)
     queue.read_buffer(c_buf, c)
     max_diff = numpy.fabs(c - (a + b) * k[0]).max()

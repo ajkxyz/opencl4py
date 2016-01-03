@@ -36,10 +36,11 @@ Original author: Alexey Kazantsev <a.kazantsev@samsung.com>
 """
 Tests some of the api in opencl4py package.
 """
-import unittest
+import gc
 import logging
 import opencl4py as cl
 import os
+import unittest
 
 
 class Test(unittest.TestCase):
@@ -59,6 +60,7 @@ class Test(unittest.TestCase):
         else:
             os.environ["PYOPENCL_CTX"] = self.old_env
         del self.old_env
+        gc.collect()
 
     def test_constants(self):
         self.assertEqual(cl.CL_DEVICE_TYPE_CPU, 2)
